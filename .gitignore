@@ -44,6 +44,7 @@ terraform.rc
 
 # Built lambda files
 lambdas/**/*.zip
+lambdas/**/bootstrap
 
 # Virtual Environments
 **/venv/**
