@@ -47,3 +47,6 @@ lambdas/**/*.zip
 
 # Virtual Environments
 **/venv/**
+
+# Go Files
+go.sum
