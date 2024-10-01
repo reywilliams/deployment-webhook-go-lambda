@@ -1,0 +1,54 @@
+# AWS assume role policy, this allows the lambda to 
+# assume the role created here
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+# data source for the AWSLambdaBasicExecutionRole managed policy
+# allows lamabda to CREATE log groups and streams and also PUT/write log events
+# https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSLambdaBasicExecutionRole.html
+data "aws_iam_policy" "lambda_basic_execution" {
+  arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# allows lambda to PUT/create, update, and batch write ITEMS
+# specifically scoped to the table from the dynamodb_table module
+resource "aws_iam_policy" "lambda_dynamodb_write_policy" {
+  name        = "lambda_dynamodb_policy"
+  description = "Policy to allow Lambda functions to write to DynamoDB"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:BatchWriteItem"
+        ],
+        Resource = module.dynamodb_table.table_arn
+      }
+    ]
+  })
+}
+
+# Define the IAM role for Lambda execution
+resource "aws_iam_role" "lambda_execution" {
+  name = "${local.profile}-lambda-execution-role"
+
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+
+  # ensures this policy is always attached, if removed will be reattched
+  # if any added outside tf state, will be removed
+  managed_policy_arns = [data.aws_iam_policy.lambda_basic_execution.arn, aws_iam_policy.lambda_dynamodb_write_policy.arn]
+}
