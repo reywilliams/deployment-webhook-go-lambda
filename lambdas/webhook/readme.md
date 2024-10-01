@@ -13,7 +13,7 @@ See this AWS doc here for information on [creating a .zip file on macOS and Linu
 For this project, the command I have used the following command. Note that these commands are also available in the shell script [build_lambda.sh](build_lambda.sh).
 
 ```shell
-GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o archive/bootstrap main.go && zip archive/lambda.zip archive/bootstrap
+go mod tidy && GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o archive/bootstrap main.go && zip archive/lambda.zip archive/bootstrap
 ```
 or
 ```shell
@@ -27,3 +27,26 @@ The [TL;DR](https://www.merriam-webster.com/dictionary/TL%3BDR) is:
 
 > Lambda functions that use arm64 architecture (AWS Graviton2 processor) can achieve significantly better price and performance than the equivalent function running on x86_64 architecture
 
+# Testing Lambda
+
+I used the following commands to invoke the lambda and test it using the sample event
+
+Use this command function name from Terragrunt state and copy it to your clipboard.
+
+**Note**: Ensure you are in the correct directory.
+```shell
+FUNC_NAME=$(terragrunt show -json | jq -r '.values | .outputs | .function_name | .value')
+echo $FUNC_NAME | tee | pbcopy
+```
+
+Use this command to invoke the lambda
+
+**Note**: Remember to set your profile if you're using AWS CLI profiles and ensure you are in the correct directory.
+```shell
+aws lambda invoke \
+    --function-name <function_name> \
+    --payload file://lambda_sample_payload.json \
+    --cli-binary-format raw-in-base64-out \
+    --region us-west-2 \
+    /dev/stdout
+```
