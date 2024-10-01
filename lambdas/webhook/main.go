@@ -51,7 +51,7 @@ func HandleRequest(ctx context.Context, event *DeploymentReviewEvent) (*string, 
 		return nil, fmt.Errorf("received nil event")
 	}
 
-	message := fmt.Sprintf("User %s request a review!", *event.Requester.Name)
+	message := fmt.Sprintf("User %s has requested a review for %s environment in %s repo!", *event.Requester.Name, *event.Environment, *event.Repo.Name)
 	return &message, nil
 }
 
