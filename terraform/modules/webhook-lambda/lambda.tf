@@ -17,7 +17,8 @@ resource "aws_lambda_function" "webhook" {
   # TODO: remove if not consumed in your runtime (or in your lambda in general)
   environment {
     variables = {
-      DYNAMO_DB_TABLE = module.dynamodb_table.table_name
+      DYNAMO_DB_TABLE_NAME = module.dynamodb_table.table_name
+      AWS_REGION = var.aws_region
     }
   }
 }
