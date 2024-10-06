@@ -5,7 +5,7 @@
 go mod tidy
 
 # compiles go program
-GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o archive/bootstrap main.go 
+GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o archive/bootstrap
 
 # zip the go executable in a zip file (Terraform will reference this)
 zip -j archive/lambda.zip archive/bootstrap
