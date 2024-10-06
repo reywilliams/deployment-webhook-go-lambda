@@ -1,7 +1,7 @@
 module "dynamodb_table" {
   source = "../dynamodb"
 
-  table_name   = "${local.profile}-deployment-engineers"
+  table_name   = "${local.profile}-table"
   billing_mode = "PROVISIONED"
 
   hash_key  = "email"
