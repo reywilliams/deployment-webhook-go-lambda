@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"webhook/logger"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/google/go-github/v65/github"
 )
+
+var log logger.Logger
 
 // This type is introduced in a PR but has not yet been included in the latest version
 // https://github.com/google/go-github/pull/3254
@@ -46,12 +50,30 @@ type WorkflowJobRun struct {
 	UpdatedAt   *github.Timestamp `json:"updated_at,omitempty"`
 }
 
-func HandleRequest(ctx context.Context, event *DeploymentReviewEvent) (*string, error) {
-	if event == nil {
+type Event interface{}
+
+func HandleRequest(ctx context.Context, event Event) (*string, error) {
+
+	// attempt to assert that this is a DeploymentReviewEvent
+	deploymentEvent, ok := event.(*DeploymentReviewEvent)
+	if !ok {
+		return nil, fmt.Errorf("unexpected event type: %T", event)
+	}
+	// ensure the DeploymentReviewEvent is not null/nil
+	if deploymentEvent == nil {
 		return nil, fmt.Errorf("received nil event")
 	}
 
-	message := fmt.Sprintf("User %s has requested a review for %s environment in %s repo!", *event.Requester.Name, *event.Environment, *event.Repo.Name)
+	// try to get json from event and log event.
+	eventJSON, err := json.Marshal(event)
+	if err != nil {
+		log.ERROR("failed to marshal event: %s", err.Error())
+		return nil, fmt.Errorf("failed to marshal event: %w", err)
+	}
+	log.INFO("Received event: %s", string(eventJSON))
+
+	message := fmt.Sprintf("User %s has requested a review for %s environment in %s repo!", *deploymentEvent.Requester.Name, *deploymentEvent.Environment, *deploymentEvent.Repo.Name)
+	log.INFO("Constructed message %s", message)
 	return &message, nil
 }
 
