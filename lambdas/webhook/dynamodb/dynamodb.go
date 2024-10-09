@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 	"regexp"
-	"webhook/logger"
 	"sync"
+	"webhook/logger"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -27,21 +27,20 @@ var once sync.Once
 var dynamoDbClientInstance *dynamodb.Client
 
 func GetDynamoClient(ctx context.Context) (*dynamodb.Client, error) {
-	
+
 	if err := configureDynamoDbClient(ctx); err != nil {
-        return nil, err
-    }
+		return nil, err
+	}
 	return dynamoDbClientInstance, nil
 }
 
-
-func configureDynamoDbClient(ctx context.Context) (error) {
+func configureDynamoDbClient(ctx context.Context) error {
 	var err error
 	// ensures only one dynamodb client instance is created
 	once.Do(func() {
-		aws_region() // sets global AWS_REGION var
+		aws_region()           // sets global AWS_REGION var
 		dynamo_db_table_name() // sets global DYNAMO_DB_TABLE_NAME var
-		
+
 		cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(AWS_REGION))
 		if err != nil {
 			log.ERROR("unable to load SDK config, %s", err.Error())
