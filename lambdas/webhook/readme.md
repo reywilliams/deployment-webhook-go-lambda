@@ -29,6 +29,44 @@ The [TL;DR](https://www.merriam-webster.com/dictionary/TL%3BDR) is:
 
 # Testing Lambda
 
+# Local Invoke
+
+> More can be found on this process [here](https://docs.aws.amazon.com/lambda/latest/dg/go-image.html) in the AWS docs.
+
+Build the docker image
+```shell
+docker build --platform linux/amd64 -t webhook-lambda:test .
+```
+
+Run the image/container that was just built
+```shell
+docker run -d -p 9000:8080 \
+--entrypoint /usr/local/bin/aws-lambda-rie \
+webhook-lambda:test ./bootstrap
+```
+
+Test the lambda using cURL and a sample payload (I have made the sample payload file [lambda_sample_payload.json](lambda_sample_payload.json))
+```shell
+curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d lambda_sample_payload.json
+```
+
+Get the container ID
+```shell
+docker ps
+```
+
+View the logs for your container and verify the behavior
+```shell
+docker logs <CONTAINER_ID>
+```
+
+Kill the container once you are done to free up that port again
+```shell
+docker kill <CONTAINER_ID>
+```
+
+# Live Invoke
+
 I used the following commands to invoke the lambda and test it using the sample event
 
 Use this command function name from Terragrunt state and copy it to your clipboard.
