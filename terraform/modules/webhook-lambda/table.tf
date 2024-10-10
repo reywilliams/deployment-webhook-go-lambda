@@ -5,7 +5,7 @@ module "dynamodb_table" {
   billing_mode = "PROVISIONED"
 
   hash_key  = "email"
-  range_key = "repository"
+  range_key = "repo-env"
 
   read_capacity  = 5
   write_capacity = 5
