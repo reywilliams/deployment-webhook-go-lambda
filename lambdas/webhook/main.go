@@ -12,32 +12,43 @@ import (
 
 var log logger.Logger
 
-type event interface{}
-
-func HandleRequest(ctx context.Context, event event) (*string, error) {
+func HandleRequest(ctx context.Context, inputEvent interface{}) (*string, error) {
 	log.INFO("lambda handler execution has begun")
+	log.INFO("Consumed event: %+v\n", inputEvent)
 
-	log.INFO("Consumed event: %+v\n", event)
-
-	switch githubEvent := event.(type) {
+	// TODO: use parse webhook to actually unmarshall event payload
+	// and recognize GitHub Types
+	switch event := inputEvent.(type) {
 	case *github.DeploymentReviewEvent:
-		log.INFO("Event if of type: %T", event)
-		message := fmt.Sprintf("User %s has requested a review for %s environment in %s repo!", *githubEvent.Requester.Name, *githubEvent.Environment, *githubEvent.Repo.Name)
-		log.INFO("Constructed message %s", message)
-		return &message, nil
+		message, err := handleDeploymentReviewEvent(event)
+		return message, err
 	default:
-		log.INFO("Switched to default case - event if of type: %T", event)
-		// try to get json from event and log event.
-		eventJSON, err := json.Marshal(event)
-		if err != nil {
-			log.ERROR("failed to marshal event: %s", err.Error())
-			return nil, fmt.Errorf("failed to marshal event: %w", err)
-		}
+		log.INFO("switched to default case as an unknown type encountered.")
+		message, err := handleDefaultCase(event)
+		return message, err
 
-		eventJSONString := string(eventJSON)
-		log.INFO("Received event: %s", string(eventJSONString))
-		return &eventJSONString, nil
 	}
+}
+
+func handleDeploymentReviewEvent(event *github.DeploymentReviewEvent) (*string, error) {
+	log.INFO("Event if of type: %T", event)
+	message := fmt.Sprintf("User %s has requested a review for %s environment in %s repo!", *event.Requester.Name, *event.Environment, *event.Repo.Name)
+	log.INFO("Constructed message %s", message)
+	return &message, nil
+}
+
+func handleDefaultCase(event interface{}) (*string, error) {
+	log.INFO("default case event is of type: %T", event)
+
+	eventJSON, err := json.Marshal(event)
+	if err != nil {
+		log.ERROR("failed to marshal event: %s", err.Error())
+		return nil, fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	eventJSONString := string(eventJSON)
+	log.INFO("Received event: %s", string(eventJSONString))
+	return &eventJSONString, nil
 }
 
 func main() {
