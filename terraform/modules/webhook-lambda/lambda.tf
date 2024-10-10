@@ -14,11 +14,11 @@ resource "aws_lambda_function" "webhook" {
 
   role    = aws_iam_role.lambda_execution.arn
 
-  # TODO: remove if not consumed in your runtime (or in your lambda in general)
   environment {
     variables = {
       DYNAMO_DB_TABLE_NAME = module.dynamodb_table.table_name
       AWS_REGION = var.aws_region
+      GITHUB_WEBHOOK_SECRET = var.github_webhook_secret
     }
   }
 }

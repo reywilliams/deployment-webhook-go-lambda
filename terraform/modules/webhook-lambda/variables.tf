@@ -32,3 +32,9 @@ variable "lambda_runtime" {
   EOF
   default     = "provided.al2023"
 }
+
+variable "github_webhook_secret" {
+  type        = string
+  description = "Secret value for github webhooks"
+  sensitive   = true
+}
