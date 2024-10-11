@@ -53,4 +53,4 @@ lambdas/**/bootstrap
 go.sum
 
 # Ignore macOS .DS_Store files
-**/.DS_Store
+.DS_Store
