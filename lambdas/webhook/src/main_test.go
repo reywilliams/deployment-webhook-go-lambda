@@ -25,11 +25,15 @@ const (
 )
 
 var (
-	happyPathReq          events.APIGatewayProxyRequest
-	invalidPayloadReq     events.APIGatewayProxyRequest
-	failedWebhookParseReq events.APIGatewayProxyRequest
+	supportedEventReq                events.APIGatewayProxyRequest
+	invalidPayloadReq                events.APIGatewayProxyRequest
+	parsedWebhookIncorrectBodyReq    events.APIGatewayProxyRequest
+	unSupportedEventReq              events.APIGatewayProxyRequest
+	parsedWebhookIncorrectHeaderType events.APIGatewayProxyRequest
 
 	eventMonitor *GitHubEventMonitor
+
+	validPayloadBody string = "{\"key\":\"value\"}"
 )
 
 func init() {
@@ -41,32 +45,49 @@ func initReqs() {
 		webhookSecretKey: []byte(GH_SAMPLE_SECRET_KEY),
 	}
 
-	happyPathBody := "{\"key\":\"value\"}"
-	happyPathReq = events.APIGatewayProxyRequest{
-		Headers: map[string]string{
-			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
-			github.EventTypeHeader:       DEPLOY_REVIEW_GH_EVENT_HEADER_TYPE,
-			github.SHA256SignatureHeader: generateSignatureHeader(happyPathBody, true),
-		},
-		Body: happyPathBody,
-	}
-
 	invalidPayloadReq = events.APIGatewayProxyRequest{
 		Headers: map[string]string{
 			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
 			github.EventTypeHeader:       DEPLOY_REVIEW_GH_EVENT_HEADER_TYPE,
-			github.SHA256SignatureHeader: generateSignatureHeader("invalid", false),
+			github.SHA256SignatureHeader: generateSignatureHeader(validPayloadBody, false),
 		},
-		Body: "Hello World!",
+		Body: validPayloadBody,
 	}
 
-	failedWebhookParseReq = events.APIGatewayProxyRequest{
+	parsedWebhookIncorrectBodyReq = events.APIGatewayProxyRequest{
 		Headers: map[string]string{
 			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
 			github.EventTypeHeader:       DEPLOY_REVIEW_GH_EVENT_HEADER_TYPE,
-			github.SHA256SignatureHeader: generateSignatureHeader("Hello World!", true),
+			github.SHA256SignatureHeader: generateSignatureHeader("invalid body", true),
 		},
-		Body: "Hello World!",
+		Body: "invalid body",
+	}
+
+	parsedWebhookIncorrectHeaderType = events.APIGatewayProxyRequest{
+		Headers: map[string]string{
+			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
+			github.EventTypeHeader:       "incorrect-header-type",
+			github.SHA256SignatureHeader: generateSignatureHeader(validPayloadBody, true),
+		},
+		Body: validPayloadBody,
+	}
+
+	unSupportedEventReq = events.APIGatewayProxyRequest{
+		Headers: map[string]string{
+			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
+			github.EventTypeHeader:       "sponsorship",
+			github.SHA256SignatureHeader: generateSignatureHeader(validPayloadBody, true),
+		},
+		Body: validPayloadBody,
+	}
+
+	supportedEventReq = events.APIGatewayProxyRequest{
+		Headers: map[string]string{
+			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
+			github.EventTypeHeader:       DEPLOY_REVIEW_GH_EVENT_HEADER_TYPE,
+			github.SHA256SignatureHeader: generateSignatureHeader(validPayloadBody, true),
+		},
+		Body: validPayloadBody,
 	}
 }
 
@@ -81,13 +102,50 @@ func TestInValidPayload(t *testing.T) {
 	}
 }
 
-func TestInvalidWebhookTypeHeader(t *testing.T) {
-	resp, err := eventMonitor.HandleRequest(context.TODO(), failedWebhookParseReq)
+func TestInvalidWebhookBody(t *testing.T) {
+	resp, err := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectBodyReq)
 	if err == nil {
 		t.Errorf("expected an error due to invalid payload but got nil")
 	} else if resp.StatusCode != STATUS_CODE_400 {
 		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
 	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("Failed to parse webhook")) {
+		t.Errorf("the expected response was not returned")
+	} else if !strings.Contains(strings.ToLower(err.Error()), strings.ToLower("invalid character")) {
+		t.Errorf("the expected response was not returned")
+	}
+}
+
+func TestInvalidWebhookHeaderType(t *testing.T) {
+	resp, err := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectHeaderType)
+	if err == nil {
+		t.Errorf("expected an error due to invalid payload but got nil")
+	} else if resp.StatusCode != STATUS_CODE_400 {
+		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
+	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("Failed to parse webhook")) {
+		t.Errorf("the expected response was not returned")
+	} else if !strings.Contains(strings.ToLower(err.Error()), strings.ToLower("unknown X-Github-Event in message")) {
+		t.Errorf("the expected response was not returned")
+	}
+}
+
+func TestUnsupportedEventType(t *testing.T) {
+	resp, err := eventMonitor.HandleRequest(context.TODO(), unSupportedEventReq)
+	if err == nil {
+		t.Errorf("expected an error due to invalid payload but got nil")
+	} else if resp.StatusCode != STATUS_CODE_400 {
+		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
+	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("unsupported event type")) {
+		t.Errorf("the expected response was not returned")
+	}
+}
+
+func TestSupportedEventType(t *testing.T) {
+	resp, err := eventMonitor.HandleRequest(context.TODO(), supportedEventReq)
+	if err != nil {
+		t.Errorf("did not expect an error but got one: %s", err.Error())
+	} else if resp.StatusCode != STATUS_CODE_200 {
+		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
+	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("Event processed")) {
 		t.Errorf("the expected response was not returned")
 	}
 }

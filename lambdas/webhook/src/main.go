@@ -38,12 +38,14 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
 		log.ERROR("invalid payload: %s", err)
+		err := fmt.Errorf("invalid payload: %w", err)
 		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Invalid payload"}, err
 	}
 
 	event, err := github.ParseWebHook(request.Headers[github.EventTypeHeader], payload)
 	if err != nil {
 		log.ERROR("failed to parse webhook: %s", err)
+		err := fmt.Errorf("failed to parse webhook: %w", err)
 		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Failed to parse webhook"}, err
 	}
 
@@ -56,13 +58,20 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Unsupported event type"}, err
 	}
 
-	// Return a successful response
 	return events.APIGatewayProxyResponse{StatusCode: 200, Body: "Event processed"}, nil
 }
 
 func handleDeploymentReviewEvent(event *github.DeploymentReviewEvent) {
 	log.INFO("Processing event: %T", event)
-	message := fmt.Sprintf("User %s has requested a review for %s environment in %s repo!", *event.Requester.Name, *event.Environment, *event.Repo.Name)
+
+	var message string
+
+	if event.Requester != nil && event.Requester.Name != nil &&
+		event.Environment != nil && event.Repo != nil && event.Repo.Name != nil {
+		message = fmt.Sprintf("User %s has requested a review for %s environment in %s repo!", *event.Requester.Name, *event.Environment, *event.Repo.Name)
+	} else {
+		message = "fall back message as there were null pointers."
+	}
 	log.INFO("Constructed message %s", message)
 }
 
