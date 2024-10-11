@@ -6,13 +6,13 @@ FROM golang:1.23 AS builder
 WORKDIR /lambda
 
 # move go mod and go sum (for deps.)
-COPY go.mod go.sum ./
+COPY ./src/go.mod ./src/go.sum ./
 
 # install deps.
 RUN go mod download
 
 # copy source code into the container
-COPY . .
+COPY ./src/. ./
 
 # Build the binary using similar command from readme
 RUN GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o bootstrap .

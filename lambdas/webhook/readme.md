@@ -10,15 +10,18 @@ Per the AWS [docs](https://docs.aws.amazon.com/lambda/latest/dg/golang-handler.h
 ### Creating your `.zip` archive/deployment package For Your Lambda
 See this AWS doc here for information on [creating a .zip file on macOS and Linux](https://docs.aws.amazon.com/lambda/latest/dg/golang-package.html#golang-package-mac-linux).
 
-For this project, the command I have used the following command. Note that these commands are also available in the shell script [build_lambda.sh](build_lambda.sh).
+For this project, the command I have used the following command. Note that these commands are also available in the shell script [build_lambda.sh](scripts/build_lambda.sh).
 
 ```shell
-go mod tidy && GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o archive/bootstrap && zip archive/lambda.zip archive/bootstrap
+cd src/ && \
+go mod tidy && 
+GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o ./../build/bootstrap && \
+zip ./../build/lambda.zip ./../build/bootstrap \
+&& cd -
 ```
-or
+or use the shell script
 ```shell
-chmod +x build_lamda.sh
-./build_lambda.sh
+chmod +x ./scripts/build_lambda.sh && ./scripts/build_lambda.sh
 ```
 
 Note that I chose ARM 64 due to the advantages outlined in [Selecting and configuring an instruction set architecture for your Lambda function](https://docs.aws.amazon.com/lambda/latest/dg/foundation-arch.html#foundation-arch-adv). 
@@ -47,7 +50,7 @@ webhook-lambda:test ./bootstrap
 
 Test the lambda using cURL and a sample payload (I have made the sample payload file [lambda_sample_payload.json](lambda_sample_payload.json))
 ```shell
-curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d lambda_sample_payload.json
+curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d @lambda_sample_payload.json
 ```
 
 Get the container ID
@@ -55,14 +58,23 @@ Get the container ID
 docker ps
 ```
 
-View the logs for your container and verify the behavior
+
+Follow & view the logs for your container and verify the behavior
 ```shell
 docker logs <CONTAINER_ID>
+```
+or if you only have one container
+```shell
+docker logs -f $(docker ps -q) 
 ```
 
 Kill the container once you are done to free up that port again
 ```shell
 docker kill <CONTAINER_ID>
+```
+or if you only have one container
+```shell
+docker kill $(docker ps -q) 
 ```
 
 # Live Invoke
