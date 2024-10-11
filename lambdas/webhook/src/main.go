@@ -9,7 +9,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	github "github.com/google/go-github/v66/github"
+	"github.com/google/go-github/v66/github"
 )
 
 var (
@@ -35,24 +35,25 @@ type GitHubEventMonitor struct {
 func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.INFO("HandleRequest() called")
 
-	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA1SignatureHeader], s.webhookSecretKey)
+	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
-		log.ERROR("Invalid payload: %s", err)
-		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Invalid payload"}, nil
+		log.ERROR("invalid payload: %s", err)
+		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Invalid payload"}, err
 	}
 
 	event, err := github.ParseWebHook(request.Headers[github.EventTypeHeader], payload)
 	if err != nil {
-		log.ERROR("Failed to parse webhook: %s", err)
-		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Failed to parse webhook"}, nil
+		log.ERROR("failed to parse webhook: %s", err)
+		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Failed to parse webhook"}, err
 	}
 
 	switch event := event.(type) {
 	case *github.DeploymentReviewEvent:
 		handleDeploymentReviewEvent(event)
 	default:
-		log.ERROR("Unsupported event type: %T", event)
-		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Unsupported event type"}, nil
+		log.ERROR("unsupported event type: %T", event)
+		err := fmt.Errorf("unsupported event type: %T", event)
+		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "Unsupported event type"}, err
 	}
 
 	// Return a successful response
