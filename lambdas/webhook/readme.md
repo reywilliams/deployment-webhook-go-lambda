@@ -36,9 +36,9 @@ The [TL;DR](https://www.merriam-webster.com/dictionary/TL%3BDR) is:
 
 > More can be found on this process [here](https://docs.aws.amazon.com/lambda/latest/dg/go-image.html) in the AWS docs.
 
-Build the docker image
+Build the docker image 
 ```shell
-docker build --platform linux/amd64 -t webhook-lambda:test .
+docker build --progress=plain --platform=linux/amd64 -t webhook-lambda:test .
 ```
 
 Run the image/container that was just built
