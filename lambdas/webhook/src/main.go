@@ -15,13 +15,15 @@ import (
 var (
 	log                   logger.Logger
 	GITHUB_WEBHOOK_SECRET string
+	mocking               bool
 )
 
 const (
 	GITHUB_WEBHOOK_SECRET_DEFAULT     = "FALLBACK_SECRET_NOT_IMPL"
 	GITHUB_WEBHOOK_SECRET_ENV_VAR_KEY = "GITHUB_WEBHOOK_SECRET"
 
-	CONTENT_TYPE_HEADER = "Content-Type"
+	CONTENT_TYPE_HEADER     = "Content-Type"
+	INTERNAL_MOCKING_HEADER = "X-Mock-Enabled"
 )
 
 func init() {
@@ -35,6 +37,11 @@ type GitHubEventMonitor struct {
 func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.INFO("HandleRequest() called")
 	logAPIGatewayRequest(request)
+
+	mocking = ShouldUseMock(&request.Headers)
+	if mocking {
+		log.INFO("WE ARE MOCKING!")
+	}
 
 	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
@@ -113,4 +120,13 @@ func logAPIGatewayRequest(req events.APIGatewayProxyRequest) {
 	log.INFO("API_LOG: Request Body: %s", req.Body)
 	log.INFO("API_LOG: Is Base64 Encoded: %v", req.IsBase64Encoded)
 	log.INFO("========================================")
+}
+
+func ShouldUseMock(headers *map[string]string) bool {
+	if headers != nil {
+		val, exists := (*headers)[INTERNAL_MOCKING_HEADER]
+		return exists && strings.ToLower(val) == "true"
+	} else {
+		return false
+	}
 }

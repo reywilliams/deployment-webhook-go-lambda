@@ -3,7 +3,8 @@
     "headers": {
         "Content-Type": "application/json",
         "X-Github-Event": "deployment_review",
-        "X-Hub-Signature-256": "sha256=3dbdc0c5e1a441d23906409d079991c60beb6e34d3e1122bd7a814886837b021"
+        "X-Hub-Signature-256": "sha256=3dbdc0c5e1a441d23906409d079991c60beb6e34d3e1122bd7a814886837b021",
+        "X-Mock-Enabled": "true"
     },
     "body": "{\"requester\":{\"name\":\"Rey\"},\"environment\":\"sample-environment\",\"repository\":{\"name\":\"sample-repository\"}}",
     "isBase64Encoded": false
