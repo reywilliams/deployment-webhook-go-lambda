@@ -17,7 +17,6 @@ resource "aws_lambda_function" "webhook" {
   environment {
     variables = {
       DYNAMO_DB_TABLE_NAME = module.dynamodb_table.table_name
-      AWS_REGION = var.aws_region
       GITHUB_WEBHOOK_SECRET = var.github_webhook_secret
     }
   }
