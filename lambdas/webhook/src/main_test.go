@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	GH_SAMPLE_SECRET_KEY string = "secret_key_shh"
-
 	sha256Prefix string = "sha256"
 
 	STATUS_CODE_200 int = 200
@@ -40,7 +38,7 @@ func init() {
 
 func initReqs() {
 	eventMonitor = &GitHubEventMonitor{
-		webhookSecretKey: []byte(GH_SAMPLE_SECRET_KEY),
+		webhookSecretKey: []byte(GITHUB_WEBHOOK_SECRET_DEFAULT),
 	}
 
 	invalidPayloadReq = generateAPIGatewayProxyRequest(nil, nil, false)
@@ -123,7 +121,7 @@ https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
 */
 func generateSignature(body string) string {
 	// create a new HMAC sha256 hash using the sample key
-	hmacHash := hmac.New(sha256.New, []byte(GH_SAMPLE_SECRET_KEY))
+	hmacHash := hmac.New(sha256.New, eventMonitor.webhookSecretKey)
 	// write the payload body to hmac
 	hmacHash.Write([]byte(body))
 	// return the hex encoded hmac body to get signature
