@@ -34,6 +34,7 @@ type GitHubEventMonitor struct {
 
 func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.INFO("HandleRequest() called")
+	logAPIGatewayRequest(request)
 
 	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
@@ -99,4 +100,17 @@ func source_github_webhook_secret() {
 	} else {
 		GITHUB_WEBHOOK_SECRET = sourcedWebHookSecret
 	}
+}
+
+func logAPIGatewayRequest(req events.APIGatewayProxyRequest) {
+	log.INFO("========================================")
+	log.INFO("API_LOG:           API Gateway Request")
+	log.INFO("========================================")
+	log.INFO("API_LOG: HTTP Method: %s", req.HTTPMethod)
+	log.INFO("API_LOG: Path: %s", req.Path)
+	log.INFO("API_LOG: Headers: %v", req.Headers)
+	log.INFO("API_LOG: Query String Parameters: %v", req.QueryStringParameters)
+	log.INFO("API_LOG: Request Body: %s", req.Body)
+	log.INFO("API_LOG: Is Base64 Encoded: %v", req.IsBase64Encoded)
+	log.INFO("========================================")
 }
