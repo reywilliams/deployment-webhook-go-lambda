@@ -46,15 +46,13 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
 		log.ERROR("invalid payload: %s", err)
-		err := fmt.Errorf("invalid payload: %w", err)
-		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "invalid payload"}, err
+		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "invalid payload"}, nil
 	}
 
 	event, err := github.ParseWebHook(request.Headers[github.EventTypeHeader], payload)
 	if err != nil {
 		log.ERROR("failed to parse webhook: %s", err)
-		err := fmt.Errorf("failed to parse webhook: %w", err)
-		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "failed to parse webhook"}, err
+		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "failed to parse webhook"}, nil
 	}
 
 	switch event := event.(type) {
@@ -62,8 +60,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 		handleDeploymentReviewEvent(event)
 	default:
 		log.ERROR("unsupported event type: %T", event)
-		err := fmt.Errorf("unsupported event type: %T", event)
-		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "unsupported event type"}, err
+		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "unsupported event type"}, nil
 	}
 
 	return events.APIGatewayProxyResponse{StatusCode: 200, Body: "event processed"}, nil
