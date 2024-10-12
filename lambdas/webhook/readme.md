@@ -109,5 +109,6 @@ aws lambda invoke \
     --payload file://api_gw_sample_payload.json \
     --cli-binary-format raw-in-base64-out \
     --region us-west-2 \
+    --profile <profile> \
     /dev/stdout
 ```
