@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -17,9 +18,6 @@ import (
 
 const (
 	sha256Prefix string = "sha256"
-
-	STATUS_CODE_200 int = 200
-	STATUS_CODE_400 int = 400
 )
 
 var (
@@ -50,31 +48,31 @@ func initReqs() {
 
 func TestInValidPayload(t *testing.T) {
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), invalidPayloadReq)
-	assert.Equal(t, STATUS_CODE_400, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", http.StatusBadRequest, resp.StatusCode))
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("invalid payload"))
 }
 
 func TestInvalidWebhookBody(t *testing.T) {
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectBodyReq)
-	assert.Equal(t, STATUS_CODE_400, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", http.StatusBadRequest, resp.StatusCode))
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("failed to parse webhook"))
 }
 
 func TestInvalidWebhookHeaderType(t *testing.T) {
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectHeaderType)
-	assert.Equal(t, STATUS_CODE_400, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", http.StatusBadRequest, resp.StatusCode))
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("failed to parse webhook"))
 }
 
 func TestUnsupportedEventType(t *testing.T) {
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), unSupportedEventReq)
-	assert.Equal(t, STATUS_CODE_400, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", http.StatusBadRequest, resp.StatusCode))
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("unsupported event type"))
 }
 
 func TestSupportedEventType(t *testing.T) {
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), supportedEventReq)
-	assert.Equal(t, STATUS_CODE_200, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Equal(t, http.StatusOK, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", http.StatusBadRequest, resp.StatusCode))
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("event processed"))
 }
 
