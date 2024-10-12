@@ -46,25 +46,28 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 
 	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
-		log.ERROR("invalid payload: %s", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: "invalid payload"}, nil
+		errMsg := fmt.Sprintf("invalid payload; %s", err)
+		log.ERROR(errMsg)
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
 	event, err := github.ParseWebHook(request.Headers[github.EventTypeHeader], payload)
 	if err != nil {
-		log.ERROR("failed to parse webhook: %s", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: "failed to parse webhook"}, nil
+		errMsg := fmt.Sprintf("failed to parse webhook; %s", err)
+		log.ERROR(errMsg)
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
 	switch event := event.(type) {
 	case *github.DeploymentReviewEvent:
 		handleDeploymentReviewEvent(event)
 	default:
-		log.ERROR("unsupported event type: %T", event)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: "unsupported event type"}, nil
+		errMsg := fmt.Sprintf("unsupported event type %T", event)
+		log.ERROR(errMsg)
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
-	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "event processed"}, nil
+	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: buildResponseBody("event processed", http.StatusOK)}, nil
 }
 
 func handleDeploymentReviewEvent(event *github.DeploymentReviewEvent) {
@@ -127,4 +130,15 @@ func ShouldUseMock(headers *map[string]string) bool {
 	} else {
 		return false
 	}
+}
+
+/*
+*
+Builds a response body using the message and status code's string representation
+ex. Bad Request: unsupported event type
+*/
+func buildResponseBody(msg string, statusCode int) string {
+
+	return strings.Join([]string{http.StatusText(statusCode), msg}, ": ")
+
 }
