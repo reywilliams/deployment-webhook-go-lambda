@@ -45,11 +45,11 @@ resource "aws_api_gateway_integration_response" "resp_400" {
 
   # used to transform the integration response body
   # when content type is application/json
-  response_templates = {
-    "application/json" = jsonencode({
-      message = "Error: Bad Request"
-    })
-  }
+  # response_templates = {
+  #   "application/json" = jsonencode({
+  #     message = "Error: Bad Request"
+  #   })
+  # }
 
   # pattern used to match the backend response
   # in this case, all 4XX status code (per AWS docs)

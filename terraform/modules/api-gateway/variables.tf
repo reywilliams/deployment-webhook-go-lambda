@@ -30,6 +30,8 @@ variable "aws_lambda_webhook_function_name" {
   description = "Function name of webhook lambda."
 }
 
+# TODO/NOTE: you will have to bump this 
+# as a webhook will likely surpass this limit
 variable "gateway_usage_quota_limit" {
   type        = number
   description = "plan usage quota limit."

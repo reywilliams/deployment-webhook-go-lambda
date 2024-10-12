@@ -1,6 +1,7 @@
 locals {
   profile = "${var.project_name}-${var.environment}"
 
+  # these are the files that, if changed, will trigger a new api gateway deployment
   gateway_trigger_files = [
     "gateway.tf",
     "integration.tf",
