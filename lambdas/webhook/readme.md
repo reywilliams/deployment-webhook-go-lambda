@@ -94,7 +94,7 @@ I used the following commands to invoke the lambda and test it using the sample 
 
 Use this command function name from Terragrunt state and copy it to your clipboard.
 
-**Note**: Ensure you are in the correct directory.
+**Note**: Ensure you are in the correct directory (../path/to/terragrunt.hcl).
 ```shell
 FUNC_NAME=$(terragrunt show -json | jq -r '.values | .outputs | .function_name | .value')
 echo $FUNC_NAME | tee | pbcopy
