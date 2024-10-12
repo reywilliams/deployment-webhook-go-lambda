@@ -5,17 +5,17 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/go-github/v66/github"
 )
 
 const (
-	APP_JSON_HEADER                    string = "application/json"
-	DEPLOY_REVIEW_GH_EVENT_HEADER_TYPE string = "deployment_review"
-
 	GH_SAMPLE_SECRET_KEY string = "secret_key_shh"
 
 	sha256Prefix string = "sha256"
@@ -32,8 +32,6 @@ var (
 	parsedWebhookIncorrectHeaderType events.APIGatewayProxyRequest
 
 	eventMonitor *GitHubEventMonitor
-
-	validPayloadBody string = "{\"key\":\"value\"}"
 )
 
 func init() {
@@ -45,108 +43,75 @@ func initReqs() {
 		webhookSecretKey: []byte(GH_SAMPLE_SECRET_KEY),
 	}
 
-	invalidPayloadReq = events.APIGatewayProxyRequest{
-		Headers: map[string]string{
-			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
-			github.EventTypeHeader:       DEPLOY_REVIEW_GH_EVENT_HEADER_TYPE,
-			github.SHA256SignatureHeader: generateSignatureHeader(validPayloadBody, false),
-		},
-		Body: validPayloadBody,
-	}
-
-	parsedWebhookIncorrectBodyReq = events.APIGatewayProxyRequest{
-		Headers: map[string]string{
-			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
-			github.EventTypeHeader:       DEPLOY_REVIEW_GH_EVENT_HEADER_TYPE,
-			github.SHA256SignatureHeader: generateSignatureHeader("invalid body", true),
-		},
-		Body: "invalid body",
-	}
-
-	parsedWebhookIncorrectHeaderType = events.APIGatewayProxyRequest{
-		Headers: map[string]string{
-			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
-			github.EventTypeHeader:       "incorrect-header-type",
-			github.SHA256SignatureHeader: generateSignatureHeader(validPayloadBody, true),
-		},
-		Body: validPayloadBody,
-	}
-
-	unSupportedEventReq = events.APIGatewayProxyRequest{
-		Headers: map[string]string{
-			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
-			github.EventTypeHeader:       "sponsorship",
-			github.SHA256SignatureHeader: generateSignatureHeader(validPayloadBody, true),
-		},
-		Body: validPayloadBody,
-	}
-
-	supportedEventReq = events.APIGatewayProxyRequest{
-		Headers: map[string]string{
-			CONTENT_TYPE_HEADER:          APP_JSON_HEADER,
-			github.EventTypeHeader:       DEPLOY_REVIEW_GH_EVENT_HEADER_TYPE,
-			github.SHA256SignatureHeader: generateSignatureHeader(validPayloadBody, true),
-		},
-		Body: validPayloadBody,
-	}
+	invalidPayloadReq = generateAPIGatewayProxyRequest(nil, nil, false)
+	parsedWebhookIncorrectBodyReq = generateAPIGatewayProxyRequest(nil, &[]string{"invalid body"}[0], true)
+	parsedWebhookIncorrectHeaderType = generateAPIGatewayProxyRequest(&[]string{"incorrect"}[0], nil, true)
+	unSupportedEventReq = generateAPIGatewayProxyRequest(&[]string{"sponsorship"}[0], nil, true)
+	supportedEventReq = generateAPIGatewayProxyRequest(nil, nil, true)
 }
 
 func TestInValidPayload(t *testing.T) {
 	resp, err := eventMonitor.HandleRequest(context.TODO(), invalidPayloadReq)
-	if err == nil {
-		t.Errorf("expected an error due to invalid payload but got nil")
-	} else if resp.StatusCode != STATUS_CODE_400 {
-		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
-	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("Invalid payload")) {
-		t.Errorf("the expected response was not returned")
-	}
+
+	assert.Error(t, err, "expected an error due to invalid payload but got nil")
+	assert.Equal(t, STATUS_CODE_400, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("invalid payload"))
+	assert.ErrorContains(t, err, "invalid payload")
 }
 
 func TestInvalidWebhookBody(t *testing.T) {
 	resp, err := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectBodyReq)
-	if err == nil {
-		t.Errorf("expected an error due to invalid payload but got nil")
-	} else if resp.StatusCode != STATUS_CODE_400 {
-		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
-	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("Failed to parse webhook")) {
-		t.Errorf("the expected response was not returned")
-	} else if !strings.Contains(strings.ToLower(err.Error()), strings.ToLower("invalid character")) {
-		t.Errorf("the expected response was not returned")
-	}
+
+	assert.Error(t, err, "expected an error due to invalid payload but got nil")
+	assert.Equal(t, STATUS_CODE_400, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("failed to parse webhook"))
+	assert.ErrorContains(t, err, "invalid character")
 }
 
 func TestInvalidWebhookHeaderType(t *testing.T) {
 	resp, err := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectHeaderType)
-	if err == nil {
-		t.Errorf("expected an error due to invalid payload but got nil")
-	} else if resp.StatusCode != STATUS_CODE_400 {
-		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
-	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("Failed to parse webhook")) {
-		t.Errorf("the expected response was not returned")
-	} else if !strings.Contains(strings.ToLower(err.Error()), strings.ToLower("unknown X-Github-Event in message")) {
-		t.Errorf("the expected response was not returned")
-	}
+
+	assert.Error(t, err, "expected an error due to invalid payload but got nil")
+	assert.Equal(t, STATUS_CODE_400, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("failed to parse webhook"))
+	assert.ErrorContains(t, err, "unknown X-Github-Event in message")
 }
 
 func TestUnsupportedEventType(t *testing.T) {
 	resp, err := eventMonitor.HandleRequest(context.TODO(), unSupportedEventReq)
-	if err == nil {
-		t.Errorf("expected an error due to invalid payload but got nil")
-	} else if resp.StatusCode != STATUS_CODE_400 {
-		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
-	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("unsupported event type")) {
-		t.Errorf("the expected response was not returned")
-	}
+
+	assert.Error(t, err, "expected an error due to invalid payload but got nil")
+	assert.Equal(t, STATUS_CODE_400, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("unsupported event type"))
+	assert.ErrorContains(t, err, "unsupported event type")
 }
 
 func TestSupportedEventType(t *testing.T) {
 	resp, err := eventMonitor.HandleRequest(context.TODO(), supportedEventReq)
-	if err != nil {
-		t.Errorf("did not expect an error but got one: %s", err.Error())
-	} else if resp.StatusCode != STATUS_CODE_200 {
-		t.Errorf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode)
-	} else if !strings.Contains(strings.ToLower(resp.Body), strings.ToLower("Event processed")) {
-		t.Errorf("the expected response was not returned")
+
+	assert.NoError(t, err)
+	assert.Equal(t, STATUS_CODE_200, resp.StatusCode, fmt.Sprintf("expected %d status code but got %d", STATUS_CODE_400, resp.StatusCode))
+	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("event processed"))
+}
+
+func generateAPIGatewayProxyRequest(eventTypeHeader *string, payload *string, validateSignature bool) events.APIGatewayProxyRequest {
+	if eventTypeHeader == nil {
+		temp := "deployment_review"
+		eventTypeHeader = &temp
+	}
+
+	if payload == nil {
+		temp := "{\"key\":\"value\"}"
+		payload = &temp
+	}
+
+	return events.APIGatewayProxyRequest{
+		Headers: map[string]string{
+			CONTENT_TYPE_HEADER:          "application/json",
+			github.EventTypeHeader:       *eventTypeHeader,
+			github.SHA256SignatureHeader: generateSignatureHeader(*payload, validateSignature),
+		},
+		Body: *payload,
 	}
 }
 
@@ -165,10 +130,14 @@ func generateSignature(body string) string {
 	return hex.EncodeToString(hmacHash.Sum(nil))
 }
 
+/*
+*
+generated a signature header, if valid is true, the string
+returned is properly encoded with the secret key
+*/
 func generateSignatureHeader(signature string, valid bool) string {
 	if valid {
 		signature = generateSignature(signature)
 	}
-
 	return strings.Join([]string{sha256Prefix, signature}, "=")
 }
