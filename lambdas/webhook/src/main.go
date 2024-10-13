@@ -11,12 +11,12 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/google/go-github/v66/github"
+	"go.uber.org/zap"
 )
 
 var (
-	log                   logger.Logger
+	log                   zap.SugaredLogger
 	GITHUB_WEBHOOK_SECRET string
-	mocking               bool
 )
 
 const (
@@ -28,6 +28,7 @@ const (
 )
 
 func init() {
+	log = *logger.GetLogger().Sugar()
 	source_github_webhook_secret() // sources GITHUB_WEBHOOK_SECRET env. variable
 }
 
@@ -36,25 +37,21 @@ type GitHubEventMonitor struct {
 }
 
 func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	log.INFO("HandleRequest() called")
+	defer log.Sync()
 	logAPIGatewayRequest(request)
-
-	mocking = ShouldUseMock(&request.Headers)
-	if mocking {
-		log.INFO("WE ARE MOCKING!")
-	}
+	log = addAPIGatewayRequestToLogContext(request)
 
 	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
 		errMsg := fmt.Sprintf("invalid payload; %s", err)
-		log.ERROR(errMsg)
+		log.Errorln("invalid payload", zap.Error(err))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
 	event, err := github.ParseWebHook(request.Headers[github.EventTypeHeader], payload)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to parse webhook; %s", err)
-		log.ERROR(errMsg)
+		log.Errorln("failed to parse webhook", zap.Error(err))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
@@ -63,7 +60,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 		handleDeploymentReviewEvent(event)
 	default:
 		errMsg := fmt.Sprintf("unsupported event type %T", event)
-		log.ERROR(errMsg)
+		log.Errorln("unsupported event type", fmt.Errorf("unsupported event type %T", event))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
@@ -71,7 +68,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 }
 
 func handleDeploymentReviewEvent(event *github.DeploymentReviewEvent) {
-	log.INFO("Processing event: %T", event)
+	log.Infof("Processing event: %T", event)
 
 	var message string
 
@@ -81,15 +78,14 @@ func handleDeploymentReviewEvent(event *github.DeploymentReviewEvent) {
 	} else {
 		message = "fall back message as there were null pointers."
 	}
-	log.INFO("Constructed message %s", message)
+	log.Infof("constructed message: %s", message)
 }
 
 func main() {
-	log.INFO("main() func called")
-
 	eventMonitor := &GitHubEventMonitor{
 		webhookSecretKey: []byte(GITHUB_WEBHOOK_SECRET),
 	}
+
 	lambda.Start(eventMonitor.HandleRequest)
 }
 
@@ -99,11 +95,11 @@ Retrieves GITHUB_WEBHOOK_SECRET environment variable, sets global var (GITHUB_WE
 -> GITHUB_WEBHOOK_SECRET_DEFAULT if empty
 */
 func source_github_webhook_secret() {
-	log.INFO("sourcing Github Webhook Secret, env. var key: %s", GITHUB_WEBHOOK_SECRET_ENV_VAR_KEY)
+	log.Debugln("sourcing github webhook secret")
 	sourcedWebHookSecret := os.Getenv(GITHUB_WEBHOOK_SECRET_ENV_VAR_KEY)
 
 	if sourcedWebHookSecret == "" {
-		log.WARN("Github Webhook Secret, falling back to default: %s", GITHUB_WEBHOOK_SECRET_DEFAULT)
+		log.Debugln("sourced github webhook secret empty, falling back to default")
 		GITHUB_WEBHOOK_SECRET = GITHUB_WEBHOOK_SECRET_DEFAULT
 	} else {
 		GITHUB_WEBHOOK_SECRET = sourcedWebHookSecret
@@ -111,23 +107,44 @@ func source_github_webhook_secret() {
 }
 
 func logAPIGatewayRequest(req events.APIGatewayProxyRequest) {
-	log.INFO("========================================")
-	log.INFO("API_LOG:           API Gateway Request")
-	log.INFO("========================================")
-	log.INFO("API_LOG: HTTP Method: %s", req.HTTPMethod)
-	log.INFO("API_LOG: Path: %s", req.Path)
-	log.INFO("API_LOG: Headers: %v", req.Headers)
-	log.INFO("API_LOG: Query String Parameters: %v", req.QueryStringParameters)
-	log.INFO("API_LOG: Request Body: %s", req.Body)
-	log.INFO("API_LOG: Is Base64 Encoded: %v", req.IsBase64Encoded)
-	log.INFO("========================================")
+	log.Infoln("received API gateway proxy request",
+		zap.Any("request", map[string]interface{}{
+			"HTTPMethod":            req.HTTPMethod,
+			"Path":                  req.Path,
+			"Headers":               req.Headers,
+			"QueryStringParameters": req.QueryStringParameters,
+			"RequestBody":           req.Body,
+			"IsBase64Encoded":       req.IsBase64Encoded,
+		}),
+	)
+}
+
+func addAPIGatewayRequestToLogContext(req events.APIGatewayProxyRequest) zap.SugaredLogger {
+	return *log.With("request", map[string]interface{}{
+		"HTTPMethod":            req.HTTPMethod,
+		"Path":                  req.Path,
+		"Headers":               req.Headers,
+		"QueryStringParameters": req.QueryStringParameters,
+		"RequestBody":           req.Body,
+		"IsBase64Encoded":       req.IsBase64Encoded,
+	})
 }
 
 func ShouldUseMock(headers *map[string]string) bool {
+	log.Debugln("checking if mocking header is present")
 	if headers != nil {
 		val, exists := (*headers)[INTERNAL_MOCKING_HEADER]
+
+		if exists {
+			log.Debugln("mocking header present")
+
+			if strings.ToLower(val) == "true" {
+				log.Debugln("mocking is enabled through mocking header")
+			}
+		}
 		return exists && strings.ToLower(val) == "true"
 	} else {
+		log.Debugln("mocking header not present")
 		return false
 	}
 }
@@ -138,7 +155,5 @@ Builds a response body using the message and status code's string representation
 ex. Bad Request: unsupported event type
 */
 func buildResponseBody(msg string, statusCode int) string {
-
 	return strings.Join([]string{http.StatusText(statusCode), msg}, ": ")
-
 }
