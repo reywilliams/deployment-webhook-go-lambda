@@ -72,7 +72,7 @@ func RequesterHasPermission(ctx context.Context, requesterEmail string, reposito
 	return &requesterHasPerm, nil
 }
 
-func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *github.DeploymentReviewEvent) {
+func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *github.DeploymentReviewEvent) error {
 	log.Infof("Processing event: %T", event)
 
 	requester := event.Requester.GetEmail()
@@ -89,16 +89,19 @@ func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *githu
 			message = fmt.Sprintf("requester %s has needs a review for %s environment in %s repo!", *event.Requester.Name, *event.Environment, *event.Repo.Name)
 		}
 		log.Infof("constructed message: %s", message)
+
+		return nil
 	} else {
 		requesterHasPerm, err := RequesterHasPermission(ctx, requester, repository, environment)
 		if err != nil {
 			log.Errorln("error observed while checking if requester has permission", zap.Error(err))
+			return err
 		}
 
 		if requesterHasPerm != nil && *requesterHasPerm {
 			log.Info("requester has permission", zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
 		}
-
+		return nil
 	}
 
 }

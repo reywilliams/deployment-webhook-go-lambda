@@ -61,7 +61,11 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 
 	switch event := event.(type) {
 	case *github.DeploymentReviewEvent:
-		handlers.HandleDeploymentReviewEvent(ctx, mocking, event)
+		err := handlers.HandleDeploymentReviewEvent(ctx, mocking, event)
+		if err != nil {
+			log.Errorln("error while handling event", zap.Error(err), zap.String("event_type", "deployment_status"))
+		}
+
 	default:
 		errMsg := fmt.Sprintf("unsupported event type %T", event)
 		log.Errorln("unsupported event type", fmt.Errorf("unsupported event type %T", event))
