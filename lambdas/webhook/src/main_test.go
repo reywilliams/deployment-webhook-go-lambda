@@ -91,6 +91,7 @@ func generateAPIGatewayProxyRequest(eventTypeHeader *string, payload *string, va
 			CONTENT_TYPE_HEADER:          "application/json",
 			github.EventTypeHeader:       *eventTypeHeader,
 			github.SHA256SignatureHeader: generateSignatureHeader(*payload, validateSignature),
+			INTERNAL_MOCKING_HEADER:      "true",
 		},
 		Body: *payload,
 	}
