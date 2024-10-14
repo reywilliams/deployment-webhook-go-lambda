@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"webhook/handlers"
 	"webhook/logger"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -15,8 +16,10 @@ import (
 )
 
 var (
-	log                   zap.SugaredLogger
+	log zap.SugaredLogger
+
 	GITHUB_WEBHOOK_SECRET string
+	mocking               bool
 )
 
 const (
@@ -40,6 +43,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	defer log.Sync()
 	logAPIGatewayRequest(request)
 	log = addAPIGatewayRequestToLogContext(request)
+	mocking = ShouldUseMock(&request.Headers)
 
 	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
@@ -57,7 +61,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 
 	switch event := event.(type) {
 	case *github.DeploymentReviewEvent:
-		handleDeploymentReviewEvent(event)
+		handlers.HandleDeploymentReviewEvent(ctx, mocking, event)
 	default:
 		errMsg := fmt.Sprintf("unsupported event type %T", event)
 		log.Errorln("unsupported event type", fmt.Errorf("unsupported event type %T", event))
@@ -65,20 +69,6 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	}
 
 	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: buildResponseBody("event processed", http.StatusOK)}, nil
-}
-
-func handleDeploymentReviewEvent(event *github.DeploymentReviewEvent) {
-	log.Infof("Processing event: %T", event)
-
-	var message string
-
-	if event.Requester != nil && event.Requester.Name != nil &&
-		event.Environment != nil && event.Repo != nil && event.Repo.Name != nil {
-		message = fmt.Sprintf("User %s has requested a review for %s environment in %s repo!", *event.Requester.Name, *event.Environment, *event.Repo.Name)
-	} else {
-		message = "fall back message as there were null pointers."
-	}
-	log.Infof("constructed message: %s", message)
 }
 
 func main() {

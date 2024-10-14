@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	db "webhook/dynamodb"
+	"webhook/logger"
 	"webhook/util"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/google/go-github/v66/github"
 	"go.uber.org/zap"
 )
 
@@ -24,13 +27,19 @@ const (
 )
 
 func init() {
+	log = *logger.GetLogger().Sugar()
 	tableName = util.LookupEnv(TABLE_NAME_ENV_VAR_KEY, TABLE_NAME_DEFAULT, false)
 }
 
-func UserHasPermission(ctx context.Context, userEmail string, repository string, environment string) (*bool, error) {
-	log.Infoln("checking if user has permission", zap.String("email", userEmail), zap.String("repository", repository), zap.String("environment", environment))
+func RequesterHasPermission(ctx context.Context, requesterEmail string, repository string, environment string) (*bool, error) {
+	log.Infoln("checking if requester has permission", zap.String("email", requesterEmail), zap.String("repository", repository), zap.String("environment", environment))
 
-	partitionKey := userEmail // (hash_key in tf)
+	if util.AnyStringsEmpty(requesterEmail, repository, environment) {
+		log.Infoln("an input string was empty")
+		return nil, errors.New("an input was string was empty")
+	}
+
+	partitionKey := requesterEmail // (hash_key in tf)
 	sortKey := strings.Join([]string{repository, environment}, "#")
 
 	PKzapField := zap.String("partitionKey", partitionKey)
@@ -58,7 +67,38 @@ func UserHasPermission(ctx context.Context, userEmail string, repository string,
 		return nil, fmt.Errorf("observed an error while trying to get dynamodb item")
 	}
 
-	userHasPerm := (result.Item != nil)
+	requesterHasPerm := (result.Item != nil)
 
-	return &userHasPerm, nil
+	return &requesterHasPerm, nil
+}
+
+func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *github.DeploymentReviewEvent) {
+	log.Infof("Processing event: %T", event)
+
+	requester := event.Requester.GetEmail()
+	repository := event.Repo.GetName()
+	environment := event.GetEnvironment()
+
+	if mocking {
+		var message string
+
+		if util.AnyStringsEmpty(requester, repository, environment) {
+			log.Infoln("an input string was empty, using fall back message for deployment_review event")
+			message = "fall back message as there were null pointers."
+		} else {
+			message = fmt.Sprintf("requester %s has needs a review for %s environment in %s repo!", *event.Requester.Name, *event.Environment, *event.Repo.Name)
+		}
+		log.Infof("constructed message: %s", message)
+	} else {
+		requesterHasPerm, err := RequesterHasPermission(ctx, requester, repository, environment)
+		if err != nil {
+			log.Errorln("error observed while checking if requester has permission", zap.Error(err))
+		}
+
+		if requesterHasPerm != nil && *requesterHasPerm {
+			log.Info("requester has permission", zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
+		}
+
+	}
+
 }

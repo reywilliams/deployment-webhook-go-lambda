@@ -2,6 +2,7 @@ package util
 
 import (
 	"os"
+	"webhook/logger"
 
 	"go.uber.org/zap"
 )
@@ -9,6 +10,10 @@ import (
 var (
 	log zap.SugaredLogger
 )
+
+func init() {
+	log = *logger.GetLogger().Sugar()
+}
 
 /*
 *
