@@ -10,10 +10,12 @@ var (
 	log zap.SugaredLogger
 )
 
-/**
+/*
+*
 Looks up environment variable using the provided key,
 returns the fallback if the environment variable is not found
-**/
+*
+*/
 func LookupEnv(key string, fallback string, sensitive bool) string {
 
 	sourcedVal, exists := os.LookupEnv(key)
@@ -41,4 +43,13 @@ func LookupEnv(key string, fallback string, sensitive bool) string {
 		log.Debugln("did not find environment variable, using fallback", sensitiveZapField)
 		return fallback
 	}
+}
+
+func AnyStringsEmpty(strings ...string) bool {
+	for _, str := range strings {
+		if str == "" {
+			return true
+		}
+	}
+	return false
 }
