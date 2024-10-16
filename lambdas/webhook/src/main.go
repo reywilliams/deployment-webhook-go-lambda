@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"webhook/handlers"
 	"webhook/logger"
+	"webhook/util"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -32,7 +32,6 @@ const (
 
 func init() {
 	log = *logger.GetLogger().Sugar()
-	source_github_webhook_secret() // sources GITHUB_WEBHOOK_SECRET env. variable
 }
 
 type GitHubEventMonitor struct {
@@ -65,7 +64,6 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 		if err != nil {
 			log.Errorln("error while handling event", zap.Error(err), zap.String("event_type", "deployment_status"))
 		}
-
 	default:
 		errMsg := fmt.Sprintf("unsupported event type %T", event)
 		log.Errorln("unsupported event type", fmt.Errorf("unsupported event type %T", event))
@@ -77,27 +75,10 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 
 func main() {
 	eventMonitor := &GitHubEventMonitor{
-		webhookSecretKey: []byte(GITHUB_WEBHOOK_SECRET),
+		webhookSecretKey: []byte(util.LookupEnv(GITHUB_WEBHOOK_SECRET_ENV_VAR_KEY, GITHUB_WEBHOOK_SECRET_DEFAULT, true)),
 	}
 
 	lambda.Start(eventMonitor.HandleRequest)
-}
-
-/*
-Retrieves GITHUB_WEBHOOK_SECRET environment variable, sets global var (GITHUB_WEBHOOK_SECRET) to:
--> GITHUB_WEBHOOK_SECRET env var value if it is not empty
--> GITHUB_WEBHOOK_SECRET_DEFAULT if empty
-*/
-func source_github_webhook_secret() {
-	log.Debugln("sourcing github webhook secret")
-	sourcedWebHookSecret := os.Getenv(GITHUB_WEBHOOK_SECRET_ENV_VAR_KEY)
-
-	if sourcedWebHookSecret == "" {
-		log.Debugln("sourced github webhook secret empty, falling back to default")
-		GITHUB_WEBHOOK_SECRET = GITHUB_WEBHOOK_SECRET_DEFAULT
-	} else {
-		GITHUB_WEBHOOK_SECRET = sourcedWebHookSecret
-	}
 }
 
 func logAPIGatewayRequest(req events.APIGatewayProxyRequest) {
