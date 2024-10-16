@@ -46,30 +46,35 @@ func initReqs() {
 }
 
 func TestInValidPayload(t *testing.T) {
+	t.Parallel()
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), invalidPayloadReq)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("invalid payload"))
 }
 
 func TestInvalidWebhookBody(t *testing.T) {
+	t.Parallel()
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectBodyReq)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("failed to parse webhook"))
 }
 
 func TestInvalidWebhookHeaderType(t *testing.T) {
+	t.Parallel()
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectHeaderType)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("failed to parse webhook"))
 }
 
 func TestUnsupportedEventType(t *testing.T) {
+	t.Parallel()
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), unSupportedEventReq)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("unsupported event type"))
 }
 
 func TestSupportedEventType(t *testing.T) {
+	t.Parallel()
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), supportedEventReq)
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("event processed"))
