@@ -12,15 +12,12 @@ import (
 )
 
 var (
-	DYNAMO_DB_TABLE_NAME   string
 	dynamoDbClientInstance *dynamodb.Client
 
 	log zap.SugaredLogger
 
 	once sync.Once
 )
-
-const ()
 
 func init() {
 	log = *logger.GetLogger().Sugar()
