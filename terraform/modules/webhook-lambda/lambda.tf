@@ -1,6 +1,10 @@
+locals {
+  lambda_service_name = "${local.profile}-webhook-lambda"
+}
+
 resource "aws_lambda_function" "webhook" {
   filename      = local.zipped_lambda_file_path
-  function_name = "${local.profile}-webhook-lambda"
+  function_name = local.lambda_service_name
 
   # used to trigger replacement when source code
   # of the lambda changes
@@ -19,6 +23,8 @@ resource "aws_lambda_function" "webhook" {
       DYNAMO_DB_TABLE_NAME = module.dynamodb_table.table_name
       GITHUB_WEBHOOK_SECRET = var.github_webhook_secret
       GITHUB_PAT = var.github_PAT
+      TRACE_ENDPOINT = "xray.${var.aws_region}.amazonaws.com"
+      SERVICE_NAME = local.lambda_service_name // for trace logs service name key
     }
   }
 }

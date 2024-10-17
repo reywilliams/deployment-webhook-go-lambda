@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-github/v66/github"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 )
 
@@ -34,6 +35,15 @@ func init() {
 }
 
 func RequesterHasPermission(ctx context.Context, requester string, repository string, environment string) (*bool, error) {
+
+	// start trace for function
+	tracer := otel.Tracer("application")
+	ctx, span := tracer.Start(ctx, "RequesterHasPermission")
+	traceID := span.SpanContext().TraceID().String()
+	spanID := span.SpanContext().SpanID().String()
+	log = *logger.WithTraceContext(log, traceID, spanID)
+	defer span.End()
+
 	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
 
 	localLogger.Infoln("checking if requester has permission")
@@ -54,6 +64,14 @@ func RequesterHasPermission(ctx context.Context, requester string, repository st
 }
 
 func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *github.DeploymentReviewEvent) error {
+	// start trace for function
+	tracer := otel.Tracer("application")
+	ctx, span := tracer.Start(ctx, "HandleDeploymentReviewEvent")
+	traceID := span.SpanContext().TraceID().String()
+	spanID := span.SpanContext().SpanID().String()
+	log = *logger.WithTraceContext(log, traceID, spanID)
+	defer span.End()
+
 	// we only handle request review events
 	if event.GetAction() != "requested" {
 		log.Debug("deployment review event was not for a request", zap.String("action", event.GetAction()))
@@ -103,10 +121,19 @@ func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *githu
 concurrently checks requester access across three levels
 Exact access -> requester has access to the exact repo and environment
 Repo access -> requester has access to a repo and all its environments (<repo>#<env> -> <repo>#*)
-Org access -> requester has access to a org, so all repos and all environments (<repo>#<env> -> *#*)
+Env access -> requester has access to an env across all repos (<repo>#<env> -> *#<env>)
+Org access -> requester has access to an org, so all repos and all environments (<repo>#<env> -> *#*)
 *
 */
 func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requester string, repository string, environment string) (*bool, error) {
+
+	// start trace for function
+	tracer := otel.Tracer("application")
+	ctx, span := tracer.Start(ctx, "checkRequesterAccess")
+	traceID := span.SpanContext().TraceID().String()
+	spanID := span.SpanContext().SpanID().String()
+	log = *logger.WithTraceContext(log, traceID, spanID)
+	defer span.End()
 
 	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
 
@@ -258,6 +285,15 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 }
 
 func checkAccessByInput(ctx context.Context, input *dynamodb.GetItemInput, client *dynamodb.Client) (*bool, error) {
+	
+	// start trace for function
+	tracer := otel.Tracer("application")
+	ctx, span := tracer.Start(ctx, "checkAccessByInput")
+	traceID := span.SpanContext().TraceID().String()
+	spanID := span.SpanContext().SpanID().String()
+	log = *logger.WithTraceContext(log, traceID, spanID)
+	defer span.End()
+
 	result, err := client.GetItem(ctx, input)
 	if err != nil {
 		log.Errorln("error observed while trying to get dynamodb item", zap.Error(err), zap.Any("input", *input))
@@ -273,6 +309,15 @@ uses event attributes (owner, repo, runID) to get environment IDs and then use t
 environment IDs to approve all pending deployments
 */
 func approveDeploymentReview(ctx context.Context, event *github.DeploymentReviewEvent) error {
+
+	// start trace for function
+	tracer := otel.Tracer("application")
+	ctx, span := tracer.Start(ctx, "approveDeploymentReview")
+	traceID := span.SpanContext().TraceID().String()
+	spanID := span.SpanContext().SpanID().String()
+	log = *logger.WithTraceContext(log, traceID, spanID)
+	defer span.End()
+
 	ghClient := gh.GetGitHubClient()
 
 	owner := event.GetOrganization().GetName()

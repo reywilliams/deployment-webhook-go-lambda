@@ -12,6 +12,8 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/google/go-github/v66/github"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +41,15 @@ type GitHubEventMonitor struct {
 }
 
 func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	defer log.Sync()
+
+	// start trace for function
+	tracer := otel.Tracer("application")
+	ctx, span := tracer.Start(ctx, "HandleRequest")
+	traceID := span.SpanContext().TraceID().String()
+	spanID := span.SpanContext().SpanID().String()
+	log = *logger.WithTraceContext(log, traceID, spanID)
+	defer span.End()
+
 	logAPIGatewayRequest(request)
 	log = addAPIGatewayRequestToLogContext(request)
 	mocking = ShouldUseMock(&request.Headers)
@@ -74,11 +84,23 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 }
 
 func main() {
+	defer log.Sync()
+
 	eventMonitor := &GitHubEventMonitor{
 		webhookSecretKey: []byte(util.LookupEnv(GITHUB_WEBHOOK_SECRET_ENV_VAR_KEY, GITHUB_WEBHOOK_SECRET_DEFAULT, true)),
 	}
 
-	lambda.Start(eventMonitor.HandleRequest)
+	ctx := context.Background()
+	traceProvider, err := logger.InitializeTracer(ctx)
+	if err != nil {
+		log.Fatalf("failed to initialize tracer", zap.Error(err))
+	}
+
+	defer func() {
+		_ = traceProvider.Shutdown(ctx)
+	}()
+
+	lambda.Start(otellambda.InstrumentHandler(eventMonitor.HandleRequest))
 }
 
 func logAPIGatewayRequest(req events.APIGatewayProxyRequest) {
