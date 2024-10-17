@@ -114,10 +114,10 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 	defer cancel() // used to cancel other checks once access is found
 
 	accessCheck := make(chan *bool) // channel to store access check(s)
-	errChan := make(chan error, 3)  // chanel to store errors
+	errChan := make(chan error, 4)  // chanel to store errors
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
@@ -136,7 +136,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 			return
 		}
 		if requesterHasExactAccess != nil && *requesterHasExactAccess {
-			localLogger.Infoln("requester has exact access", zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
+			localLogger.Infoln("requester has exact access")
 			accessCheck <- requesterHasExactAccess
 			cancel()
 		}
@@ -161,7 +161,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 			return
 		}
 		if requesterHasRepoAccess != nil && *requesterHasRepoAccess {
-			localLogger.Infoln("requester has repo access", zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
+			localLogger.Infoln("requester has repo access")
 			accessCheck <- requesterHasRepoAccess
 			cancel()
 		}
@@ -185,8 +185,32 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 			return
 		}
 		if requesterHasOrgAccess != nil && *requesterHasOrgAccess {
-			localLogger.Infoln("requester has org access", zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
+			localLogger.Infoln("requester has org access")
 			accessCheck <- requesterHasOrgAccess
+			cancel()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		// checks if requester has environment access (across all repos)
+		repoAccessInput := &dynamodb.GetItemInput{
+			TableName: &tableName,
+			Key: map[string]types.AttributeValue{
+				"email":    &types.AttributeValueMemberS{Value: requester},
+				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{"*", environment}, "#")},
+			},
+		}
+		requesterHasRepoAccess, err := checkAccessByInput(ctx, repoAccessInput, client)
+		if err != nil {
+			errChan <- err
+			localLogger.Errorln("error observed while trying to check if requester has environment level access", zap.Error(err))
+			return
+		}
+		if requesterHasRepoAccess != nil && *requesterHasRepoAccess {
+			localLogger.Infoln("requester has environment access")
+			accessCheck <- requesterHasRepoAccess
 			cancel()
 		}
 	}()
