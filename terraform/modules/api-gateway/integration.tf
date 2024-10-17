@@ -17,17 +17,8 @@ resource "aws_api_gateway_integration" "webhook_lambda" {
   http_method             = aws_api_gateway_method.post_webhook.http_method
   integration_http_method = aws_api_gateway_method.post_webhook.http_method
 
-  # type = "MOCK"
   type = "AWS_PROXY"
   uri  = var.aws_lambda_webhook_function_invoke_arn
-
-  # used to transform incoming requests before they are sent to the backend service
-  # the templates use Velocity Template Language (VTL) Syntax
-  # request_templates = {
-  #   "application/json" = jsonencode({
-  #     "statusCode" = 200
-  #   })
-  # }
 }
 
 resource "aws_lambda_permission" "api_gateway_permission" {
