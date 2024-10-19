@@ -5,10 +5,12 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -59,8 +61,21 @@ func WithTraceContext(logger zap.SugaredLogger, traceID string, spanID string) *
 func InitializeTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	traceEndpoint := os.Getenv(TRACE_ENDPOINT_ENV_VAR_KEY)
 	serviceNameKey := os.Getenv(SERVICE_NAME_ENV_VAR_KEY)
+	dev := os.Getenv("environment") == "dev"
 
-	client := otlptracehttp.NewClient(otlptracehttp.WithEndpoint(traceEndpoint), otlptracehttp.WithInsecure())
+	var client otlptrace.Client
+	if dev { //dev should use insecure for testing
+		client = otlptracehttp.NewClient(
+			otlptracehttp.WithEndpoint(traceEndpoint),
+			otlptracehttp.WithInsecure(),
+			otlptracehttp.WithURLPath("/TraceSegments"),
+			otlptracehttp.WithTimeout(time.Second*30))
+	} else {
+		client = otlptracehttp.NewClient(
+			otlptracehttp.WithEndpoint(traceEndpoint),
+			otlptracehttp.WithURLPath("/TraceSegments"),
+			otlptracehttp.WithTimeout(time.Second*30))
+	}
 
 	exporter, err := otlptrace.New(ctx, client)
 	if err != nil {
@@ -75,5 +90,6 @@ func InitializeTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 		)),
 	)
 	otel.SetTracerProvider(traceProvider)
+	otel.SetTextMapPropagator(xray.Propagator{})
 	return traceProvider, nil
 }
