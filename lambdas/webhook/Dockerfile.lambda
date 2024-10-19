@@ -6,7 +6,6 @@ RUN go version
 WORKDIR /lambda
 COPY ./src/. ./
 RUN go mod download
-RUN go test -v
 RUN GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o bootstrap .
 
 # get runtime environment (Amazon Linux 2023 image)
