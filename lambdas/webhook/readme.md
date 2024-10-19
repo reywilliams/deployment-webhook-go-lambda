@@ -39,7 +39,7 @@ The [TL;DR](https://www.merriam-webster.com/dictionary/TL%3BDR) is:
 ## Build The Image
 Build the docker image 
 ```shell
-docker build --progress=plain --platform=linux/amd64 -t webhook-lambda:test .
+docker build --progress=plain --platform=linux/amd64 -t webhook-lambda .
 ```
 
 ## Run the Image
@@ -47,7 +47,7 @@ Run the image/container that was just built
 ```shell
 docker run -d -p 9000:8080 \
 --entrypoint /usr/local/bin/aws-lambda-rie \
-webhook-lambda:test ./bootstrap
+webhook-lambda ./bootstrap
 ```
 
 Get the container ID
