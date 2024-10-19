@@ -38,7 +38,7 @@ func RequesterHasPermission(ctx context.Context, requester string, repository st
 
 	// start trace for function
 	tracer := otel.Tracer("application")
-	ctx, span := tracer.Start(ctx, "RequesterHasPermission")
+	_, span := tracer.Start(ctx, "RequesterHasPermission")
 	traceID := span.SpanContext().TraceID().String()
 	spanID := span.SpanContext().SpanID().String()
 	log = *logger.WithTraceContext(log, traceID, spanID)
@@ -66,7 +66,7 @@ func RequesterHasPermission(ctx context.Context, requester string, repository st
 func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *github.DeploymentReviewEvent) error {
 	// start trace for function
 	tracer := otel.Tracer("application")
-	ctx, span := tracer.Start(ctx, "HandleDeploymentReviewEvent")
+	_, span := tracer.Start(ctx, "HandleDeploymentReviewEvent")
 	traceID := span.SpanContext().TraceID().String()
 	spanID := span.SpanContext().SpanID().String()
 	log = *logger.WithTraceContext(log, traceID, spanID)
@@ -129,7 +129,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 
 	// start trace for function
 	tracer := otel.Tracer("application")
-	ctx, span := tracer.Start(ctx, "checkRequesterAccess")
+	_, span := tracer.Start(ctx, "checkRequesterAccess")
 	traceID := span.SpanContext().TraceID().String()
 	spanID := span.SpanContext().SpanID().String()
 	log = *logger.WithTraceContext(log, traceID, spanID)
@@ -137,11 +137,8 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 
 	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel() // used to cancel other checks once access is found
-
-	accessCheck := make(chan *bool) // channel to store access check(s)
-	errChan := make(chan error, 4)  // chanel to store errors
+	accessCheck := make(chan *bool, 4) // channel to store access checks
+	errChan := make(chan error, 4)     // chanel to store errors
 
 	var wg sync.WaitGroup
 	wg.Add(4)
@@ -165,7 +162,6 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		if requesterHasExactAccess != nil && *requesterHasExactAccess {
 			localLogger.Infoln("requester has exact access")
 			accessCheck <- requesterHasExactAccess
-			cancel()
 		}
 
 	}()
@@ -190,7 +186,6 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		if requesterHasRepoAccess != nil && *requesterHasRepoAccess {
 			localLogger.Infoln("requester has repo access")
 			accessCheck <- requesterHasRepoAccess
-			cancel()
 		}
 	}()
 
@@ -214,7 +209,6 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		if requesterHasOrgAccess != nil && *requesterHasOrgAccess {
 			localLogger.Infoln("requester has org access")
 			accessCheck <- requesterHasOrgAccess
-			cancel()
 		}
 	}()
 
@@ -238,21 +232,19 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		if requesterHasRepoAccess != nil && *requesterHasRepoAccess {
 			localLogger.Infoln("requester has environment access")
 			accessCheck <- requesterHasRepoAccess
-			cancel()
 		}
 	}()
 
-	go func() {
-		wg.Wait()
-		close(accessCheck)
-		close(errChan)
-	}()
+	wg.Wait()
+	close(accessCheck)
+	close(errChan)
 
 	var firstErr error
 	for {
 		select { // read from error and access chanel
 		case result, ok := <-accessCheck:
 			if ok && result != nil && *result {
+				localLogger.Infoln("requester has access")
 				return result, nil // determined access, exit early
 			}
 		case err, ok := <-errChan:
@@ -264,17 +256,10 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		}
 
 		// if we've reviewed all the access we can
-		// and we've reviewed all the errors OR just got one
+		// AND we've reviewed all the errors
 		// then break
-		if len(accessCheck) == 0 && (len(errChan) == 0 || firstErr != nil) {
+		if len(accessCheck) == 0 && (len(errChan) == 0) {
 			break
-		}
-	}
-
-	for result := range accessCheck {
-		if result != nil && *result {
-			localLogger.Infoln("requester has access")
-			return result, nil
 		}
 	}
 
@@ -285,10 +270,10 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 }
 
 func checkAccessByInput(ctx context.Context, input *dynamodb.GetItemInput, client *dynamodb.Client) (*bool, error) {
-	
+
 	// start trace for function
 	tracer := otel.Tracer("application")
-	ctx, span := tracer.Start(ctx, "checkAccessByInput")
+	_, span := tracer.Start(ctx, "checkAccessByInput")
 	traceID := span.SpanContext().TraceID().String()
 	spanID := span.SpanContext().SpanID().String()
 	log = *logger.WithTraceContext(log, traceID, spanID)
@@ -312,7 +297,7 @@ func approveDeploymentReview(ctx context.Context, event *github.DeploymentReview
 
 	// start trace for function
 	tracer := otel.Tracer("application")
-	ctx, span := tracer.Start(ctx, "approveDeploymentReview")
+	_, span := tracer.Start(ctx, "approveDeploymentReview")
 	traceID := span.SpanContext().TraceID().String()
 	spanID := span.SpanContext().SpanID().String()
 	log = *logger.WithTraceContext(log, traceID, spanID)
