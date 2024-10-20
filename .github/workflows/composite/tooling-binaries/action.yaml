@@ -1,0 +1,51 @@
+name: get-tooling-binaries
+description: Workflow to get binaries for tooling
+
+
+runs:
+  using: "composite"
+  steps:
+    - name: Flip tenv flags
+      run: |
+        echo "TENV_AUTO_INSTALL=true" >> $GITHUB_ENV
+        echo "GITHUB_ACTIONS=true" >> $GITHUB_ENV
+
+    - name: Restore tenv cache
+      id: cache-tenv-restore
+      uses: actions/cache/restore@v4
+      with:
+          path: ~/.tenv/
+          key: ${{ runner.os }}-tenv-${{ var.TENV_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-tenv-
+
+    - name: Set up tenv (cache miss)
+      if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
+      run: |
+          curl -O -L "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ var.TENV_VERSION }}_arm64.deb"
+          sudo dpkg -i "tenv_${{ var.TENV_VERSION }}_arm64.deb"
+
+    - name: Using Cached tenv
+      if: steps.cache-tenv-restore.outputs.cache-hit == 'true'
+      run: |
+          echo "Using cached tenv version: ${{ var.TENV_VERSION }}"
+
+    - name: Install Terraform
+      working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      run: |
+        tenv install terraform
+
+    - name: Install Terragrunt
+      working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      run: |
+        tenv install terragrunt
+
+    - name: Cache tenv (w/ Terraform and Terragrunt) installation
+      id: cache-tenv-save
+      uses: actions/cache/save@v4
+      with:
+          path: ~/.tenv/
+          key: ${{ steps.cache-tenv-restore.outputs.cache-primary-key }}
+        
+
+        

@@ -1,0 +1,18 @@
+on:
+    workflow_call:
+      inputs:
+        application:
+          description: The application to interact with
+          required: true
+          type: string
+
+jobs:
+  plan-application:
+    concurrency: tg-plan-${{ inputs.application }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Plan ${{ inputs.application }}
+        uses: ./.github/workflows/composite/plan/action.yaml
+        with:
+          application: ${{ inputs.application }}
+

@@ -1,0 +1,18 @@
+inputs:
+	application:
+		description: The application to interact with
+		required: true
+
+
+runs:
+  using: "composite"
+  steps:
+		-  uses: actions/checkout@v4
+
+		- name: Get Tooling Binaries
+			uses: ./.github/workflows/composite/tooling-binaries/action.yaml
+
+	  - name: Plan Terragrunt applications
+			working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+			run: |
+				terragrunt plan --input=false -no-color

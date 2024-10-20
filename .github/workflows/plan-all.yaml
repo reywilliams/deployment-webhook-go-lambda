@@ -1,0 +1,20 @@
+name: Terragrunt Plan (All)
+run-name: plan/all against ref ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+
+jobs:
+  plan-webhook-lambda:
+    uses: ./.github/workflows/plan_reusable.yaml
+    with: 
+      application: webhook-lambda
+  plan-api-gateway:
+    uses: ./.github/workflows/plan_reusable.yaml
+    with: 
+      application: api-gateway
+          
+
+  
+
+
