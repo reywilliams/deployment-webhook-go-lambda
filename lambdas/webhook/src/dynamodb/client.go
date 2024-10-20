@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-xray-sdk-go/instrumentation/awsv2"
 	"go.uber.org/zap"
 )
 
@@ -41,6 +42,7 @@ func configureDynamoDbClient(ctx context.Context) error {
 			log.Errorln("unable to load default SDK config", zap.Error(err))
 			return
 		}
+		awsv2.AWSV2Instrumentor(&cfg.APIOptions)
 		dynamoDbClientInstance = dynamodb.NewFromConfig(cfg)
 	})
 

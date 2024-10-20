@@ -4,8 +4,10 @@
 FROM golang:1.23 AS builder
 RUN go version
 WORKDIR /lambda
-COPY ./src/. ./
+# Copy go.mod and go.sum first to cache dependencies
+COPY ./src/go.mod ./src/go.sum ./
 RUN go mod download
+COPY ./src/. ./
 RUN GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -o bootstrap .
 
 # get runtime environment (Amazon Linux 2023 image)

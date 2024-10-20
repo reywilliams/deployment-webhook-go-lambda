@@ -14,8 +14,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/google/go-github/v66/github"
-	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 )
 
@@ -35,14 +35,10 @@ func init() {
 }
 
 func RequesterHasPermission(ctx context.Context, requester string, repository string, environment string) (*bool, error) {
-
-	// start trace for function
-	tracer := otel.Tracer("application")
-	_, span := tracer.Start(ctx, "RequesterHasPermission")
-	traceID := span.SpanContext().TraceID().String()
-	spanID := span.SpanContext().SpanID().String()
-	log = *logger.WithTraceContext(log, traceID, spanID)
-	defer span.End()
+	_, subSegment := xray.BeginSubsegment(ctx, "RequesterHasPermission")
+	traceID := subSegment.TraceID
+	log = *log.With(zap.String("traceID", traceID))
+	defer subSegment.Close(nil)
 
 	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
 
@@ -64,13 +60,11 @@ func RequesterHasPermission(ctx context.Context, requester string, repository st
 }
 
 func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *github.DeploymentReviewEvent) error {
-	// start trace for function
-	tracer := otel.Tracer("application")
-	_, span := tracer.Start(ctx, "HandleDeploymentReviewEvent")
-	traceID := span.SpanContext().TraceID().String()
-	spanID := span.SpanContext().SpanID().String()
-	log = *logger.WithTraceContext(log, traceID, spanID)
-	defer span.End()
+
+	_, subSegment := xray.BeginSubsegment(ctx, "HandleDeploymentReviewEvent")
+	traceID := subSegment.TraceID
+	log = *log.With(zap.String("traceID", traceID))
+	defer subSegment.Close(nil)
 
 	// we only handle request review events
 	if event.GetAction() != "requested" {
@@ -127,13 +121,10 @@ Org access -> requester has access to an org, so all repos and all environments 
 */
 func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requester string, repository string, environment string) (*bool, error) {
 
-	// start trace for function
-	tracer := otel.Tracer("application")
-	_, span := tracer.Start(ctx, "checkRequesterAccess")
-	traceID := span.SpanContext().TraceID().String()
-	spanID := span.SpanContext().SpanID().String()
-	log = *logger.WithTraceContext(log, traceID, spanID)
-	defer span.End()
+	// _, subSegment := xray.BeginSubsegment(ctx, "checkRequesterAccess")
+	// traceID := subSegment.TraceID
+	// log = *log.With(zap.String("traceID", traceID))
+	// defer subSegment.Close(nil)
 
 	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
 
@@ -271,13 +262,10 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 
 func checkAccessByInput(ctx context.Context, input *dynamodb.GetItemInput, client *dynamodb.Client) (*bool, error) {
 
-	// start trace for function
-	tracer := otel.Tracer("application")
-	_, span := tracer.Start(ctx, "checkAccessByInput")
-	traceID := span.SpanContext().TraceID().String()
-	spanID := span.SpanContext().SpanID().String()
-	log = *logger.WithTraceContext(log, traceID, spanID)
-	defer span.End()
+	// _, subSegment := xray.BeginSubsegment(ctx, "checkAccessByInput")
+	// traceID := subSegment.TraceID
+	// log = *log.With(zap.String("traceID", traceID))
+	// defer subSegment.Close(nil)
 
 	result, err := client.GetItem(ctx, input)
 	if err != nil {
@@ -295,13 +283,10 @@ environment IDs to approve all pending deployments
 */
 func approveDeploymentReview(ctx context.Context, event *github.DeploymentReviewEvent) error {
 
-	// start trace for function
-	tracer := otel.Tracer("application")
-	_, span := tracer.Start(ctx, "approveDeploymentReview")
-	traceID := span.SpanContext().TraceID().String()
-	spanID := span.SpanContext().SpanID().String()
-	log = *logger.WithTraceContext(log, traceID, spanID)
-	defer span.End()
+	_, subSegment := xray.BeginSubsegment(ctx, "approveDeploymentReview")
+	traceID := subSegment.TraceID
+	log = *log.With(zap.String("traceID", traceID))
+	defer subSegment.Close(nil)
 
 	ghClient := gh.GetGitHubClient()
 
