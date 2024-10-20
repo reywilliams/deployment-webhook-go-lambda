@@ -8,17 +8,17 @@ resource "aws_lambda_function" "webhook" {
 
   # check supported runtimes in AWS docs here:
   # https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html#runtimes-supported
-  runtime = var.lambda_runtime
-  handler = "bootstrap"
-  architectures = [ "arm64" ] # as we build lambda with GOARCH=arm64
+  runtime       = var.lambda_runtime
+  handler       = "bootstrap"
+  architectures = ["arm64"] # as we build lambda with GOARCH=arm64
 
-  role    = aws_iam_role.lambda_execution.arn
+  role = aws_iam_role.lambda_execution.arn
 
   environment {
     variables = {
-      DYNAMO_DB_TABLE_NAME = module.dynamodb_table.table_name
+      DYNAMO_DB_TABLE_NAME  = module.dynamodb_table.table_name
       GITHUB_WEBHOOK_SECRET = var.github_webhook_secret
-      GITHUB_PAT = var.github_PAT
+      GITHUB_PAT            = var.github_PAT
     }
   }
 }

@@ -14,7 +14,7 @@ data "aws_iam_policy_document" "assume_role" {
 }
 
 # data source for the AWSLambdaBasicExecutionRole managed policy
-# allows lamabda to CREATE log groups and streams and also PUT/write log events
+# allows lambda to CREATE log groups and streams and also PUT/write log events
 # https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSLambdaBasicExecutionRole.html
 data "aws_iam_policy" "lambda_basic_execution" {
   arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -42,13 +42,20 @@ resource "aws_iam_policy" "lambda_dynamodb_write_policy" {
   })
 }
 
+data "aws_iam_policy" "xray" {
+  arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
 # Define the IAM role for Lambda execution
 resource "aws_iam_role" "lambda_execution" {
   name = "${local.profile}-lambda-execution-role"
 
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
 
-  # ensures this policy is always attached, if removed will be reattched
+resource "aws_iam_role_policy_attachments_exclusive" "example" {
+  role_name = aws_iam_role.lambda_execution.name
+  # ensures this policies are always attached, if removed will be reattched
   # if any added outside tf state, will be removed
-  managed_policy_arns = [data.aws_iam_policy.lambda_basic_execution.arn, aws_iam_policy.lambda_dynamodb_write_policy.arn]
+  policy_arns = [data.aws_iam_policy.lambda_basic_execution.arn, aws_iam_policy.lambda_dynamodb_write_policy.arn, data.aws_iam_policy.xray]
 }
