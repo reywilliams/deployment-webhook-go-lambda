@@ -11,6 +11,9 @@ jobs:
       application: webhook-lambda
   plan-api-gateway:
     uses: ./.github/workflows/plan_reusable.yaml
+    secrets:
+      WEHBOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
     with: 
       application: api-gateway
           

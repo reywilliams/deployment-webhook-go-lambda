@@ -16,7 +16,10 @@ jobs:
     name: Plan ${{inputs.application}}
     uses: ./.github/workflows/plan-reusable.yaml
     with: 
-      application: webhook-lambda
+      application: ${{inputs.application}}
+    secrets:
+      WEHBOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
       
 

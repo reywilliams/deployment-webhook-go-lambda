@@ -5,11 +5,22 @@ on:
           description: The application to interact with
           required: true
           type: string
+      secrets:
+        WEHBOOK_SECRET:
+          description: "GitHub Webhook secret"
+          required: false
+        PAT_TOKEN:
+          description: "Github PAT Token For Making Calls"
+          required: false
 
 jobs:
   plan-application:
     concurrency: tg-plan-${{ inputs.application }}
     runs-on: ubuntu-22.04
+    env:
+      TF_VAR_github_webhook_secret: ${{ secrets.WEHBOOK_SECRET }}
+      TF_VAR_github_PAT: ${{ secrets.PAT_TOKEN }}
+
     steps:
       - name: Plan ${{ inputs.application }}
         uses: ./.github/workflows/composite/plan/action.yaml
