@@ -1,6 +1,6 @@
 
 data "external" "github_webhook_ips" {
-    program = ["bash", "-c", "curl -s https://api.github.com/meta | jq -r '.hooks | to_entries | map({(.key | tostring): .value}) | add'"]
+  program = ["bash", "-c", "curl -s https://api.github.com/meta | jq -r '.hooks | to_entries | map({(.key | tostring): .value}) | add'"]
 }
 
 # restricts API Gateway to source IPs from Github 
