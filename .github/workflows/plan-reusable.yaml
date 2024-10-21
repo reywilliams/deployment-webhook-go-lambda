@@ -18,9 +18,8 @@ jobs:
     concurrency: tg-plan-${{ inputs.application }}
     runs-on: ubuntu-22.04
     env:
-      TF_VAR_github_webhook_secret: ${{ secrets.WEHBOOK_SECRET }}
-      TF_VAR_github_PAT: ${{ secrets.PAT_TOKEN }}
-
+      TF_VAR_github_webhook_secret_string: ${{ secrets.WEHBOOK_SECRET }}
+      TF_VAR_github_PAT_secret_string: ${{ secrets.PAT_TOKEN }}
     steps:
       - name: Plan ${{ inputs.application }}
         uses: ./.github/workflows/composite/plan/action.yaml
