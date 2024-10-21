@@ -33,16 +33,16 @@ variable "lambda_runtime" {
   default     = "provided.al2023"
 }
 
-variable "github_webhook_secret" {
+variable "github_webhook_secret_name" {
   type        = string
-  description = "Secret value for github webhooks"
+  description = "Secret name (or ARN) for github webhooks"
   sensitive   = true
 }
 
 # TODO: try looking into github app and using
 # https://github.com/jferrl/go-githubauth
-variable "github_PAT" {
+variable "github_PAT_secret_name" {
   type        = string
-  description = "GitHub Personal Access Token (PAT)"
+  description = "Secret name (or ARN) for GitHub Personal Access Token (PAT)"
   sensitive   = true
 }
