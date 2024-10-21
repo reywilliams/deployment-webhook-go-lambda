@@ -35,7 +35,7 @@ func GetGitHubClient(ctx context.Context) (*github.Client, error) {
 
 	// see if we already got a sourcing error
 	if sourcingError != nil {
-		log.Errorln("cannot source github PAT, cannot create new Github client instance", zap.Error(err))
+		log.Errorln("cannot source github PAT, cannot create new Github client instance", zap.Error(sourcingError))
 		return nil, sourcingError
 	}
 

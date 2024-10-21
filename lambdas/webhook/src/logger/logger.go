@@ -50,8 +50,9 @@ func InitializeXRay() {
 
 	if devEnv {
 		os.Setenv("AWS_XRAY_SDK_DISABLED", "true")
+		return
 	}
-	
+
 	xray.Configure(xray.Config{
 		ServiceVersion: "1.0.0",
 	})

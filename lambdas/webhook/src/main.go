@@ -51,9 +51,11 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	}
 
 	_, subSegment := xray.BeginSubsegment(ctx, "HandleRequest")
-	traceID := subSegment.TraceID
-	log = *log.With(zap.String("traceID", traceID))
-	defer subSegment.Close(nil)
+	if subSegment != nil {
+		traceID := subSegment.TraceID
+		log = *log.With(zap.String("traceID", traceID))
+		defer subSegment.Close(nil)
+	}
 
 	logAPIGatewayRequest(request)
 	log = addAPIGatewayRequestToLogContext(request)

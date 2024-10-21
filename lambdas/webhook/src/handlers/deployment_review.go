@@ -36,9 +36,11 @@ func init() {
 
 func RequesterHasPermission(ctx context.Context, requester string, repository string, environment string) (*bool, error) {
 	_, subSegment := xray.BeginSubsegment(ctx, "RequesterHasPermission")
-	traceID := subSegment.TraceID
-	log = *log.With(zap.String("traceID", traceID))
-	defer subSegment.Close(nil)
+	if subSegment != nil {
+		traceID := subSegment.TraceID
+		log = *log.With(zap.String("traceID", traceID))
+		defer subSegment.Close(nil)
+	}
 
 	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
 
@@ -62,9 +64,11 @@ func RequesterHasPermission(ctx context.Context, requester string, repository st
 func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *github.DeploymentReviewEvent) error {
 
 	_, subSegment := xray.BeginSubsegment(ctx, "HandleDeploymentReviewEvent")
-	traceID := subSegment.TraceID
-	log = *log.With(zap.String("traceID", traceID))
-	defer subSegment.Close(nil)
+	if subSegment != nil {
+		traceID := subSegment.TraceID
+		log = *log.With(zap.String("traceID", traceID))
+		defer subSegment.Close(nil)
+	}
 
 	// we only handle request review events
 	if event.GetAction() != "requested" {
@@ -121,10 +125,12 @@ Org access -> requester has access to an org, so all repos and all environments 
 */
 func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requester string, repository string, environment string) (*bool, error) {
 
-	// _, subSegment := xray.BeginSubsegment(ctx, "checkRequesterAccess")
-	// traceID := subSegment.TraceID
-	// log = *log.With(zap.String("traceID", traceID))
-	// defer subSegment.Close(nil)
+	_, subSegment := xray.BeginSubsegment(ctx, "checkRequesterAccess")
+	if subSegment != nil {
+		traceID := subSegment.TraceID
+		log = *log.With(zap.String("traceID", traceID))
+		defer subSegment.Close(nil)
+	}
 
 	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
 
@@ -262,10 +268,12 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 
 func checkAccessByInput(ctx context.Context, input *dynamodb.GetItemInput, client *dynamodb.Client) (*bool, error) {
 
-	// _, subSegment := xray.BeginSubsegment(ctx, "checkAccessByInput")
-	// traceID := subSegment.TraceID
-	// log = *log.With(zap.String("traceID", traceID))
-	// defer subSegment.Close(nil)
+	_, subSegment := xray.BeginSubsegment(ctx, "checkAccessByInput")
+	if subSegment != nil {
+		traceID := subSegment.TraceID
+		log = *log.With(zap.String("traceID", traceID))
+		defer subSegment.Close(nil)
+	}
 
 	result, err := client.GetItem(ctx, input)
 	if err != nil {
@@ -284,9 +292,11 @@ environment IDs to approve all pending deployments
 func approveDeploymentReview(ctx context.Context, event *github.DeploymentReviewEvent) error {
 
 	_, subSegment := xray.BeginSubsegment(ctx, "approveDeploymentReview")
-	traceID := subSegment.TraceID
-	log = *log.With(zap.String("traceID", traceID))
-	defer subSegment.Close(nil)
+	if subSegment != nil {
+		traceID := subSegment.TraceID
+		log = *log.With(zap.String("traceID", traceID))
+		defer subSegment.Close(nil)
+	}
 
 	ghClient, err := gh.GetGitHubClient(ctx)
 	if err != nil {

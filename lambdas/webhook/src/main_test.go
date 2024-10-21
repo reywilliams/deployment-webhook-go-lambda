@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -31,11 +32,13 @@ var (
 
 func init() {
 	initReqs()
+
+	os.Setenv("environment", "dev")
 }
 
 func initReqs() {
 	eventMonitor = &GitHubEventMonitor{
-		webhookSecretKey: []byte(GITHUB_WEBHOOK_SECRET_NAME_DEFAULT),
+		webhookSecretKey: []byte(GITHUB_WEBHOOK_SECRET_DEFAULT),
 	}
 
 	invalidPayloadReq = generateAPIGatewayProxyRequest(nil, nil, false)
