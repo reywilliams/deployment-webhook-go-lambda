@@ -36,6 +36,12 @@ variable "lambda_runtime" {
 variable "github_webhook_secret_name" {
   type        = string
   description = "Secret name (or ARN) for github webhooks"
+  default     = "GITHUB_WEBHOOK_SECRET"
+}
+
+variable "github_webhook_secret_string" {
+  type        = string
+  description = "Secret string for github webhook"
   sensitive   = true
 }
 
@@ -44,5 +50,11 @@ variable "github_webhook_secret_name" {
 variable "github_PAT_secret_name" {
   type        = string
   description = "Secret name (or ARN) for GitHub Personal Access Token (PAT)"
+  default     = "GITHUB_PAT_SECRET"
+}
+
+variable "github_PAT_secret_string" {
+  type        = string
+  description = "Secret string for github PAT"
   sensitive   = true
 }

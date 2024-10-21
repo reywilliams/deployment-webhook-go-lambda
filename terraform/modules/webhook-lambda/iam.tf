@@ -46,6 +46,30 @@ data "aws_iam_policy" "xray" {
   arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
 
+# allows lambda to access the github PAT and webhook secrets
+# using their ARNs
+locals {
+  secret_arns = [module.github_webhook_secret.secret_ARN, module.github_PAT_secret.secret_ARN]
+}
+resource "aws_iam_policy" "secret_access" {
+  name = "secrets-access-policy"
+
+  policy = <<EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Action": [
+          "secretsmanager:GetSecretValue"
+        ],
+        "Effect": "Allow",
+        "Resource": ${jsonencode(local.secret_arns)}
+      }
+    ]
+  }
+  EOF
+}
+
 # Define the IAM role for Lambda execution
 resource "aws_iam_role" "lambda_execution" {
   name = "${local.profile}-lambda-execution-role"
@@ -54,5 +78,6 @@ resource "aws_iam_role" "lambda_execution" {
 
   # ensures this policies are always attached, if removed will be reattched
   # if any added outside tf state, will be removed
-  managed_policy_arns = [data.aws_iam_policy.lambda_basic_execution.arn, aws_iam_policy.lambda_dynamodb_write_policy.arn, data.aws_iam_policy.xray.arn]
+  managed_policy_arns = [data.aws_iam_policy.lambda_basic_execution.arn, aws_iam_policy.lambda_dynamodb_write_policy.arn,
+  data.aws_iam_policy.xray.arn, aws_iam_policy.secret_access.arn]
 }
