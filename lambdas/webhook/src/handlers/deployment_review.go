@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	db "webhook/dynamodb"
+	"webhook/db"
 	gh "webhook/github"
 	"webhook/logger"
 	"webhook/util"
@@ -288,7 +288,11 @@ func approveDeploymentReview(ctx context.Context, event *github.DeploymentReview
 	log = *log.With(zap.String("traceID", traceID))
 	defer subSegment.Close(nil)
 
-	ghClient := gh.GetGitHubClient()
+	ghClient, err := gh.GetGitHubClient(ctx)
+	if err != nil {
+		log.Errorln("error while getting github client", zap.Error(err))
+		return err
+	}
 
 	owner := event.GetOrganization().GetName()
 	repo := event.GetRepo().GetName()

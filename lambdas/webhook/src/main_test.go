@@ -35,7 +35,7 @@ func init() {
 
 func initReqs() {
 	eventMonitor = &GitHubEventMonitor{
-		webhookSecretKey: []byte(GITHUB_WEBHOOK_SECRET_DEFAULT),
+		webhookSecretKey: []byte(GITHUB_WEBHOOK_SECRET_NAME_DEFAULT),
 	}
 
 	invalidPayloadReq = generateAPIGatewayProxyRequest(nil, nil, false)

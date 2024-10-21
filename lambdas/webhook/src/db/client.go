@@ -1,4 +1,4 @@
-package dynamodb
+package db
 
 import (
 	"context"
@@ -33,18 +33,19 @@ func GetDynamoClient(ctx context.Context) (*dynamodb.Client, error) {
 }
 
 func configureDynamoDbClient(ctx context.Context) error {
-	var err error
+	var returnedErr error
 
 	// ensures only one dynamodb client instance is created
 	once.Do(func() {
 		cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(os.Getenv("AWS_REGION")))
 		if err != nil {
-			log.Errorln("unable to load default SDK config", zap.Error(err))
+			returnedErr = err
+			log.Errorln("unable to load default SDK config for db client", zap.Error(err))
 			return
 		}
 		awsv2.AWSV2Instrumentor(&cfg.APIOptions)
 		dynamoDbClientInstance = dynamodb.NewFromConfig(cfg)
 	})
 
-	return err
+	return returnedErr
 }

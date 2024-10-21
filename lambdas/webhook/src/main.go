@@ -7,6 +7,7 @@ import (
 	"strings"
 	"webhook/handlers"
 	"webhook/logger"
+	"webhook/secrets"
 	"webhook/util"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -19,13 +20,13 @@ import (
 var (
 	log zap.SugaredLogger
 
-	GITHUB_WEBHOOK_SECRET string
-	mocking               bool
+	Mocking bool
 )
 
 const (
-	GITHUB_WEBHOOK_SECRET_DEFAULT     = "FALLBACK_SECRET_NOT_IMPL"
-	GITHUB_WEBHOOK_SECRET_ENV_VAR_KEY = "GITHUB_WEBHOOK_SECRET"
+	GITHUB_WEBHOOK_SECRET_DEFAULT          = "FALLBACK_SECRET_NOT_IMPL"
+	GITHUB_WEBHOOK_SECRET_NAME_DEFAULT     = "GITHUB_WEBHOOK_SECRET"
+	GITHUB_WEBHOOK_SECRET_NAME_ENV_VAR_KEY = "GITHUB_WEBHOOK_SECRET"
 
 	CONTENT_TYPE_HEADER     = "Content-Type"
 	INTERNAL_MOCKING_HEADER = "X-Mock-Enabled"
@@ -42,6 +43,13 @@ type GitHubEventMonitor struct {
 
 func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
+	Mocking = ShouldUseMock(&request.Headers)
+	webhookSecretErr := s.sourceSecret(ctx)
+	if webhookSecretErr != nil {
+		errMsg := "a webhook secret has not been configured"
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError, Body: buildResponseBody(errMsg, http.StatusInternalServerError)}, nil
+	}
+
 	_, subSegment := xray.BeginSubsegment(ctx, "HandleRequest")
 	traceID := subSegment.TraceID
 	log = *log.With(zap.String("traceID", traceID))
@@ -49,7 +57,6 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 
 	logAPIGatewayRequest(request)
 	log = addAPIGatewayRequestToLogContext(request)
-	mocking = ShouldUseMock(&request.Headers)
 
 	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
 	if err != nil {
@@ -67,7 +74,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 
 	switch event := event.(type) {
 	case *github.DeploymentReviewEvent:
-		err := handlers.HandleDeploymentReviewEvent(ctx, mocking, event)
+		err := handlers.HandleDeploymentReviewEvent(ctx, Mocking, event)
 		if err != nil {
 			log.Errorln("error while handling event", zap.Error(err), zap.String("event_type", "deployment_status"))
 		}
@@ -83,9 +90,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 func main() {
 	defer log.Sync()
 
-	eventMonitor := &GitHubEventMonitor{
-		webhookSecretKey: []byte(util.LookupEnv(GITHUB_WEBHOOK_SECRET_ENV_VAR_KEY, GITHUB_WEBHOOK_SECRET_DEFAULT, true)),
-	}
+	eventMonitor := &GitHubEventMonitor{}
 
 	lambda.Start(eventMonitor.HandleRequest)
 }
@@ -140,4 +145,42 @@ ex. Bad Request: unsupported event type
 */
 func buildResponseBody(msg string, statusCode int) string {
 	return strings.Join([]string{http.StatusText(statusCode), msg}, ": ")
+}
+
+/*
+If we are mocking, we return GITHUB_WEBHOOK_SECRET_DEFAULT,
+otherwise we attempt to get the secret name from environment variables.
+We using the secret name sourced from GITHUB_WEBHOOK_SECRET_NAME_ENV_VAR_KEY
+or GITHUB_WEBHOOK_SECRET_NAME_DEFAULT if that environment variable is not found
+*/
+func getWebhookSecret(ctx context.Context) (*string, error) {
+
+	var secretDefault = string(GITHUB_WEBHOOK_SECRET_DEFAULT)
+
+	if Mocking {
+		return &secretDefault, nil
+	}
+
+	webhookSecretName := util.LookupEnv(GITHUB_WEBHOOK_SECRET_NAME_ENV_VAR_KEY, GITHUB_WEBHOOK_SECRET_NAME_DEFAULT, false)
+	webhookSecret, err := secrets.GetSecretValue(ctx, webhookSecretName)
+	if webhookSecret == nil || err != nil {
+		log.Errorln("error while getting webhook secret value")
+		return nil, err
+	}
+
+	return webhookSecret, nil
+}
+
+/*
+Sources Github Webhook secret and sets it if sourced.
+Returns error and leaves property unset if not sourced successfully.
+*/
+func (s *GitHubEventMonitor) sourceSecret(ctx context.Context) error {
+
+	secret, err := getWebhookSecret(ctx)
+	if err != nil {
+		return err
+	}
+	s.webhookSecretKey = []byte(*secret)
+	return nil
 }
