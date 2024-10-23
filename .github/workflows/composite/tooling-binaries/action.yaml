@@ -22,9 +22,7 @@ runs:
       id: cache-tenv-restore
       uses: actions/cache/restore@v4
       with:
-        path: |
-          ~/.tenv/
-          tenv_${{ inputs.tenv_version }}_amd64.deb
+        path: "**/*tenv*/**"
         key: ${{ runner.os }}-tenv-${{ inputs.tenv_version }}
         restore-keys: |
           ${{ runner.os }}-tenv-
@@ -56,7 +54,5 @@ runs:
       id: cache-tenv-save
       uses: actions/cache/save@v4
       with:
-        path: |
-          ~/.tenv/
-          tenv_${{ inputs.tenv_version }}_amd64.deb
+        path: "**/*tenv*/**"
         key: ${{ steps.cache-tenv-restore.outputs.cache-primary-key }}
