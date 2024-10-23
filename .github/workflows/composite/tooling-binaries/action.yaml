@@ -17,7 +17,7 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ~/.tenv/
-        key: ${{ runner.os }}-tenv-${{ var.TENV_VERSION }}
+        key: ${{ runner.os }}-tenv-${{ vars.TENV_VERSION }}
         restore-keys: |
           ${{ runner.os }}-tenv-
 
@@ -25,14 +25,14 @@ runs:
       if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -O -L "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ var.TENV_VERSION }}_arm64.deb"
-        sudo dpkg -i "tenv_${{ var.TENV_VERSION }}_arm64.deb"
+        curl -O -L "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ vars.TENV_VERSION }}_arm64.deb"
+        sudo dpkg -i "tenv_${{ vars.TENV_VERSION }}_arm64.deb"
 
     - name: Using Cached tenv
       if: steps.cache-tenv-restore.outputs.cache-hit == 'true'
       shell: bash
       run: |
-        echo "Using cached tenv version: ${{ var.TENV_VERSION }}"
+        echo "Using cached tenv version: ${{ vars.TENV_VERSION }}"
 
     - name: Install Terraform
       working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
