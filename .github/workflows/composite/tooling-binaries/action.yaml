@@ -21,7 +21,7 @@ runs:
       run: |
         echo "TENV_AUTO_INSTALL=true" >> $GITHUB_ENV
         echo "GITHUB_ACTIONS=true" >> $GITHUB_ENV
-        echo "TENV_ROOT=${{ inputs.github_workspace }}/.tenv"
+        echo "TENV_ROOT=${{ inputs.github_workspace }}/.tenv" >> $GITHUB_ENV
 
     - name: Restore tenv cache
       id: cache-tenv-restore
