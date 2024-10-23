@@ -9,7 +9,7 @@ jobs:
     uses: ./.github/workflows/plan-reusable.yaml
     permissions:
       contents: read
-    with: 
+    with:
       application: webhook-lambda
 
   plan-api-gateway:
@@ -19,10 +19,5 @@ jobs:
     secrets:
       WEHBOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-    with: 
+    with:
       application: api-gateway
-          
-
-  
-
-
