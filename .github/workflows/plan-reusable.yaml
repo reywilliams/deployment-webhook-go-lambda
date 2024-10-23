@@ -26,6 +26,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
+      - name: Set AWS Profile
+        shell: bash
+        run: echo "AWS_PROFILE=${{ vars.AWS_PROFILE }}" >> $GITHUB_ENV
+
       - name: Plan ${{ inputs.application }}
         uses: ./.github/workflows/composite/plan
         with:
