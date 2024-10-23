@@ -27,18 +27,16 @@ runs:
         restore-keys: |
           ${{ runner.os }}-tenv-
 
-    - name: Set up tenv (cache miss)
+    - name: Download tenv (cache miss)
       if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -s -O -L "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ inputs.tenv_version }}_amd64.deb"
-        sudo dpkg -i "tenv_${{ inputs.tenv_version }}_amd64.deb"
+        curl -s -L -o ~/.tenv/tenv_${{ inputs.tenv_version }}_amd64.deb "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ inputs.tenv_version }}_amd64.deb"
 
-    - name: Using Cached tenv
-      if: steps.cache-tenv-restore.outputs.cache-hit == 'true'
+    - name: Install tenv
       shell: bash
       run: |
-        echo "Using cached tenv version: ${{ inputs.tenv_version }}"
+        sudo dpkg -i ~/.tenv/tenv_${{ inputs.tenv_version }}_amd64.deb
 
     - name: Install Terraform
       working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
