@@ -23,8 +23,8 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: |
-          "**/tenv_/**"
-          "**/.*tenv*/**"
+          "*tenv*.deb"
+          "~/.tenv/**"
         key: ${{ runner.os }}-tenv-${{ inputs.tenv_version }}
         restore-keys: |
           ${{ runner.os }}-tenv-
@@ -58,6 +58,6 @@ runs:
       uses: actions/cache/save@v4
       with:
         path: |
-          "**/tenv_/**"
-          "**/.*tenv*/**"
+          "*tenv*.deb"
+          "~/.tenv/**"
         key: ${{ steps.cache-tenv-restore.outputs.cache-primary-key }}
