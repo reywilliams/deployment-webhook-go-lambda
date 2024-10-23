@@ -21,8 +21,9 @@ jobs:
       TF_VAR_github_webhook_secret_string: ${{ secrets.WEHBOOK_SECRET }}
       TF_VAR_github_PAT_secret_string: ${{ secrets.PAT_TOKEN }}
     steps:
+      - uses: actions/checkout@v4
       - name: Plan ${{ inputs.application }}
-        uses: ./.github/workflows/composite/plan/action.yaml
+        uses: ./.github/workflows/composite/plan
         with:
           application: ${{ inputs.application }}
 

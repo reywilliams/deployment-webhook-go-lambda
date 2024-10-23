@@ -6,11 +6,16 @@ on:
 
 jobs:
   plan-webhook-lambda:
-    uses: ./.github/workflows/plan_reusable.yaml
+    uses: ./.github/workflows/plan-reusable.yaml
+    permissions:
+      contents: read
     with: 
       application: webhook-lambda
+
   plan-api-gateway:
-    uses: ./.github/workflows/plan_reusable.yaml
+    uses: ./.github/workflows/plan-reusable.yaml
+    permissions:
+      contents: read
     secrets:
       WEHBOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}

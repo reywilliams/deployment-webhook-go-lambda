@@ -5,6 +5,8 @@ description: Workflow to get binaries for tooling
 runs:
   using: "composite"
   steps:
+    - uses: actions/checkout@v4
+    
     - name: Flip tenv flags
       run: |
         echo "TENV_AUTO_INSTALL=true" >> $GITHUB_ENV
