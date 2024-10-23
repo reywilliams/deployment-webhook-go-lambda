@@ -43,8 +43,8 @@ terraform.rc
 .terragrunt-cache
 
 # Built lambda files
-lambdas/**/*.zip
-lambdas/**/bootstrap
+# lambdas/**/*.zip
+# lambdas/**/bootstrap
 
 # Virtual Environments
 **/venv/**
