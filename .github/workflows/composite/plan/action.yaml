@@ -68,16 +68,12 @@ runs:
         jq -r '.changes | flatten | group_by(.action) |
         map({ action: .[0].action, count: length, addresses: map(.addr) }) |
         .[] | select(.action != "no-op" and .action != "read") |
-        "## \(.action | ascii_upcase) (\(.count)):","- `\(.addresses[])`", ""')
+        "## \(.action | ascii_upcase) (\(.count))","- `\(.addresses[])`", ""')
 
         if [ -z "${ACTIONS}" ];
         then
-          echo ":closed_lock_with_key:" >> $GITHUB_STEP_SUMMARY
-          echo "There Are No Actions" >> $GITHUB_STEP_SUMMARY
-          echo ":closed_lock_with_key:" >> $GITHUB_STEP_SUMMARY
+          echo "# :closed_lock_with_key: No Actions :closed_lock_with_key:" >> $GITHUB_STEP_SUMMARY
         else
-          echo ":bangbang:" >> $GITHUB_STEP_SUMMARY
-          echo "Review Actions" >> $GITHUB_STEP_SUMMARY
-          echo ":bangbang:" >> $GITHUB_STEP_SUMMARY
+          echo "# :bangbang: Review Actions :bangbang:" >> $GITHUB_STEP_SUMMARY
           echo "$ACTIONS" >> $GITHUB_STEP_SUMMARY
         fi
