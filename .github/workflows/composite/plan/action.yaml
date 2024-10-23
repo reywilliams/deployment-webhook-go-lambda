@@ -5,10 +5,10 @@ inputs:
   tenv_version:
     description: The tenv version to use
     required: true
-  plugin_cache_dir:
-    description: The path where Terraform plugins are caches
+  github_workspace:
+    description: GitHub Workspace Path
     required: true
-    default: /github/workspace/.terraform.d/plugin-cache
+    default: /github/workspace
   WEBHOOK_SECRET:
     description: "GitHub Webhook secret"
     required: false
@@ -22,12 +22,12 @@ runs:
     - name: Create Plugin Cache Directory
       shell: bash
       run: |
-        mkdir -p ${{ inputs.plugin_cache_dir }}
+        mkdir -p ${{ inputs.github_workspace }}/.terraform.d/plugin-cache
 
     - name: Cache Terraform Plugins
       uses: actions/cache@v4
       with:
-        path: ${{ inputs.plugin_cache_dir }}
+        path: ${{ inputs.github_workspace }}/.terraform.d/plugin-cache
         key: ${{ runner.os }}-tf-plugin-cache-${{ hashFiles('**/providers.tf') }}
 
     - name: Get Tooling Binaries
@@ -35,12 +35,13 @@ runs:
       with:
         application: ${{ inputs.application }}
         tenv_version: ${{ inputs.tenv_version }}
+        github_workspace: ${{ inputs.github_workspace }}
 
     - name: Init Terragrunt application
       working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
       shell: bash
       env:
-        TF_PLUGIN_CACHE_DIR: ${{ inputs.plugin_cache_dir }}
+        TF_PLUGIN_CACHE_DIR: ${{ inputs.github_workspace }}/.terraform.d/plugin-cache
         TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "enabled"
       run: |
         terragrunt init --input=false

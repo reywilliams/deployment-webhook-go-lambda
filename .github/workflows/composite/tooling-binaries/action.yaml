@@ -8,6 +8,10 @@ inputs:
   tenv_version:
     description: The tenv version to use
     required: true
+  github_workspace:
+    description: GitHub Workspace Path
+    required: true
+    default: /github/workspace
 
 runs:
   using: "composite"
@@ -17,14 +21,15 @@ runs:
       run: |
         echo "TENV_AUTO_INSTALL=true" >> $GITHUB_ENV
         echo "GITHUB_ACTIONS=true" >> $GITHUB_ENV
+        echo "TENV_ROOT=${{ inputs.github_workspace }}/.tenv"
 
     - name: Restore tenv cache
       id: cache-tenv-restore
       uses: actions/cache/restore@v4
       with:
         path: |
-          "*tenv*.deb"
-          "~/.tenv/**"
+          *tenv*
+          ${{ inputs.github_workspace }}/.tenv
         key: ${{ runner.os }}-tenv-${{ inputs.tenv_version }}
         restore-keys: |
           ${{ runner.os }}-tenv-
@@ -58,6 +63,6 @@ runs:
       uses: actions/cache/save@v4
       with:
         path: |
-          "*tenv*.deb"
-          "~/.tenv/**"
+          *tenv*
+          ${{ inputs.github_workspace }}/.tenv
         key: ${{ steps.cache-tenv-restore.outputs.cache-primary-key }}

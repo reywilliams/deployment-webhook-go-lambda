@@ -33,4 +33,4 @@ jobs:
           tenv_version: ${{ inputs.tenv_version }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-          plugin_cache_dir: ${{ github.workspace }}/.terraform.d/plugin-cache
+          github_workspace: ${{ github.workspace }}
