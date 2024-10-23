@@ -53,4 +53,31 @@ runs:
         TF_VAR_github_PAT_secret_string: ${{ inputs.PAT_TOKEN }}
         TF_VAR_github_webhook_secret_string: ${{ inputs.WEBHOOK_SECRET }}
       run: |
-        terragrunt plan --input=false
+        terragrunt plan --input=false -out plan.tfplan
+
+    - name: Summary
+      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      shell: bash
+      env:
+        APPLICATION: ${{ inputs.application }}
+      run: |
+        terragrunt show -json plan.tfplan > $APPLICATION-plan.json
+
+        ACTIONS=$(jq -s --arg app "$APPLICATION" '[.[].resource_changes[] | {addr: .address, action: .change.actions[]}] |
+        group_by(.action) | {application: $app, changes: .}' "$APPLICATION-plan.json" |
+        jq -r '.changes | flatten | group_by(.action) |
+        map({ action: .[0].action, count: length, addresses: map(.addr) }) |
+        .[] | select(.action != "no-op" and .action != "read") |
+        "## \(.action | ascii_upcase) (\(.count)):","- `\(.addresses[])`", ""')
+
+        if [ -z "${ACTIONS}" ];
+        then
+          echo ":closed_lock_with_key:" >> $GITHUB_STEP_SUMMARY
+          echo "There Are No Actions" >> $GITHUB_STEP_SUMMARY
+          echo ":closed_lock_with_key:" >> $GITHUB_STEP_SUMMARY
+        else
+          echo ":bangbang:" >> $GITHUB_STEP_SUMMARY
+          echo "Review Actions" >> $GITHUB_STEP_SUMMARY
+          echo ":bangbang:" >> $GITHUB_STEP_SUMMARY
+          echo "$ACTIONS" >> $GITHUB_STEP_SUMMARY
+        fi
