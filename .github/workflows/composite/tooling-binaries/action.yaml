@@ -31,7 +31,7 @@ runs:
       if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -O -L "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ inputs.tenv_version }}_amd64.deb"
+        curl -s -O -L "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ inputs.tenv_version }}_amd64.deb"
         sudo dpkg -i "tenv_${{ inputs.tenv_version }}_amd64.deb"
 
     - name: Using Cached tenv

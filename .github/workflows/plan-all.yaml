@@ -7,6 +7,7 @@ on:
 jobs:
   plan-webhook-lambda:
     uses: ./.github/workflows/plan-reusable.yaml
+    secrets: inherit
     permissions:
       contents: read
     with:
@@ -15,11 +16,9 @@ jobs:
 
   plan-api-gateway:
     uses: ./.github/workflows/plan-reusable.yaml
+    secrets: inherit
     permissions:
       contents: read
-    secrets:
-      WEHBOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
-      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
     with:
       application: api-gateway
       tenv_version: ${{ vars.tenv_version }}
