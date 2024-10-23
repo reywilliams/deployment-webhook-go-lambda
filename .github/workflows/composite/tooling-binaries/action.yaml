@@ -1,6 +1,14 @@
 name: get-tooling-binaries
 description: Workflow to get binaries for tooling
 
+inputs:
+  application:
+    description: The application to interact with
+    required: true
+  tenv_version:
+    description: The tenv version to use
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -17,7 +25,7 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ~/.tenv/
-        key: ${{ runner.os }}-tenv-${{ vars.TENV_VERSION }}
+        key: ${{ runner.os }}-tenv-${{ inputs.tenv_version }}
         restore-keys: |
           ${{ runner.os }}-tenv-
 
@@ -25,14 +33,14 @@ runs:
       if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -O -L "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ vars.TENV_VERSION }}_arm64.deb"
-        sudo dpkg -i "tenv_${{ vars.TENV_VERSION }}_arm64.deb"
+        curl -O -L "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ inputs.tenv_version }}_arm64.deb"
+        sudo dpkg -i "tenv_${{ inputs.tenv_version }}_arm64.deb"
 
     - name: Using Cached tenv
       if: steps.cache-tenv-restore.outputs.cache-hit == 'true'
       shell: bash
       run: |
-        echo "Using cached tenv version: ${{ vars.TENV_VERSION }}"
+        echo "Using cached tenv version: ${{ inputs.tenv_version }}"
 
     - name: Install Terraform
       working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}

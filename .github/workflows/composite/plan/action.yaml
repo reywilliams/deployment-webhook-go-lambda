@@ -2,6 +2,9 @@ inputs:
   application:
     description: The application to interact with
     required: true
+  tenv_version:
+    description: The tenv version to use
+    required: true
 
 runs:
   using: "composite"
@@ -10,6 +13,9 @@ runs:
 
     - name: Get Tooling Binaries
       uses: ./.github/workflows/composite/tooling-binaries
+      with:
+        application: ${{ inputs.application }}
+        tenv_version: ${{ inputs.tenv_version }}
 
     - name: Plan Terragrunt applications
       working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
