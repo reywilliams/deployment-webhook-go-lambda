@@ -19,16 +19,12 @@ jobs:
         with:
           show-progress: false
 
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
-
-      - name: Set AWS Profile
+      - name: Add profile credentials to ~/.aws/credentials
         shell: bash
-        run: echo "AWS_PROFILE=${{ vars.AWS_PROFILE }}" >> $GITHUB_ENV
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }} --profile ${{ vars.AWS_PROFILE }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }} --profile ${{ vars.AWS_PROFILE }}
+          aws configure set region us-west-2 --profile ${{ vars.AWS_PROFILE }}
 
       - name: Plan ${{ inputs.application }}
         uses: ./.github/workflows/composite/plan
