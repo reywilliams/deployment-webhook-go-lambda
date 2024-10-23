@@ -31,12 +31,12 @@ runs:
       if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -s -L -o ~/.tenv/tenv_${{ inputs.tenv_version }}_amd64.deb "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ inputs.tenv_version }}_amd64.deb"
+        curl -s -L -o $HOME/.tenv/tenv_${{ inputs.tenv_version }}_amd64.deb "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ inputs.tenv_version }}_amd64.deb"
 
     - name: Install tenv
       shell: bash
       run: |
-        sudo dpkg -i ~/.tenv/tenv_${{ inputs.tenv_version }}_amd64.deb
+        sudo dpkg -i $HOME/.tenv/tenv_${{ inputs.tenv_version }}_amd64.deb
 
     - name: Install Terraform
       working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
