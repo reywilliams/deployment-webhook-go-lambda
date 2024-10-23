@@ -9,7 +9,7 @@ inputs:
     description: The path where Terraform plugins are caches
     required: true
     default: /github/workspace/.terraform.d/plugin-cache
-  WEHBOOK_SECRET:
+  WEBHOOK_SECRET:
     description: "GitHub Webhook secret"
     required: false
   PAT_TOKEN:
@@ -50,6 +50,6 @@ runs:
       shell: bash
       env:
         TF_VAR_github_PAT_secret_string: ${{ inputs.PAT_TOKEN }}
-        TF_VAR_github_webhook_secret_string: ${{ inputs.WEHBOOK_SECRET }}
+        TF_VAR_github_webhook_secret_string: ${{ inputs.WEBHOOK_SECRET }}
       run: |
         terragrunt plan --input=false
