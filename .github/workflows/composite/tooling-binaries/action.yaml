@@ -44,13 +44,13 @@ runs:
       working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
       shell: bash
       run: |
-        tenv install terraform
+        tenv terraform install
 
     - name: Install Terragrunt
       working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
       shell: bash
       run: |
-        tenv install terragrunt
+        tenv terragrunt install
 
     - name: Cache tenv (w/ Terraform and Terragrunt) installation
       id: cache-tenv-save

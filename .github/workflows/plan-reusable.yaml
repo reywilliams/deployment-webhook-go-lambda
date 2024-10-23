@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
