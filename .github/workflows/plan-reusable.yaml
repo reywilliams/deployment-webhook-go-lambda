@@ -9,21 +9,11 @@ on:
         description: The tenv version to use
         required: true
         type: string
-    secrets:
-      WEHBOOK_SECRET:
-        description: "GitHub Webhook secret"
-        required: false
-      PAT_TOKEN:
-        description: "Github PAT Token For Making Calls"
-        required: false
 
 jobs:
   plan-application:
     concurrency: tg-plan-${{ inputs.application }}
     runs-on: ubuntu-22.04
-    env:
-      TF_VAR_github_webhook_secret_string: ${{ secrets.WEHBOOK_SECRET }}
-      TF_VAR_github_PAT_secret_string: ${{ secrets.PAT_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,9 +23,11 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
-      
+
       - name: Plan ${{ inputs.application }}
         uses: ./.github/workflows/composite/plan
         with:
           application: ${{ inputs.application }}
           tenv_version: ${{ inputs.tenv_version }}
+          WEHBOOK_SECRET: ${{ secrets.WEHBOOK_SECRET }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}

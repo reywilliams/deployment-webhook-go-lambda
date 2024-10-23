@@ -5,18 +5,50 @@ inputs:
   tenv_version:
     description: The tenv version to use
     required: true
+  WEHBOOK_SECRET:
+    description: "GitHub Webhook secret"
+    required: false
+  PAT_TOKEN:
+    description: "Github PAT Token For Making Calls"
+    required: false
+
+env:
+  PLUGIN_CACHE_DIR: /github/workspace/.terraform.d/plugin-cache
 
 runs:
   using: "composite"
   steps:
+    - name: Create Plugin Cache Directory
+      shell: bash
+      run: |
+        mkdir -p ${{ env.PLUGIN_CACHE_DIR }}
+
+    - name: Cache Terraform Plugins
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.PLUGIN_CACHE_DIR }}
+        key: ${{ runner.os }}-tf-plugin-cache-${{ hashFiles('**/providers.tf') }}
+
     - name: Get Tooling Binaries
       uses: ./.github/workflows/composite/tooling-binaries
       with:
         application: ${{ inputs.application }}
         tenv_version: ${{ inputs.tenv_version }}
 
-    - name: Plan Terragrunt applications
+    - name: Init Terragrunt application
       working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
       shell: bash
+      env:
+        TF_PLUGIN_CACHE_DIR: ${{ env.PLUGIN_CACHE_DIR }}
+        TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "enabled"
       run: |
-        terragrunt plan --input=false -no-color
+        terragrunt init --input=false
+
+    - name: Plan Terragrunt application
+      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      shell: bash
+      env:
+        TF_VAR_github_PAT_secret_string: ${{ inputs.PAT_TOKEN }}
+        TF_VAR_github_webhook_secret_string: ${{ inputs.WEHBOOK_SECRET }}
+      run: |
+        terragrunt plan --input=false
