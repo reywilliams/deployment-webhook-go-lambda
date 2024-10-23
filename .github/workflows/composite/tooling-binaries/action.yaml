@@ -41,13 +41,13 @@ runs:
         echo "Using cached tenv version: ${{ inputs.tenv_version }}"
 
     - name: Install Terraform
-      working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
       shell: bash
       run: |
         tenv install terraform
 
     - name: Install Terragrunt
-      working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
       shell: bash
       run: |
         tenv install terragrunt

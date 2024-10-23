@@ -16,7 +16,7 @@ runs:
         tenv_version: ${{ inputs.tenv_version }}
 
     - name: Plan Terragrunt applications
-      working-directory: /terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
       shell: bash
       run: |
         terragrunt plan --input=false -no-color
