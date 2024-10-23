@@ -72,8 +72,10 @@ runs:
 
         if [ -z "${ACTIONS}" ];
         then
-          echo "# :closed_lock_with_key: No Actions :closed_lock_with_key:" >> $GITHUB_STEP_SUMMARY
+          echo "> [!NOTE]" >> $GITHUB_STEP_SUMMARY
+          echo "> No actions." >> $GITHUB_STEP_SUMMARY
         else
-          echo "# :bangbang: Review Actions :bangbang:" >> $GITHUB_STEP_SUMMARY
+          echo "> [!CAUTION]" >> $GITHUB_STEP_SUMMARY
+          echo "> Review actions." >> $GITHUB_STEP_SUMMARY
           echo "$ACTIONS" >> $GITHUB_STEP_SUMMARY
         fi
