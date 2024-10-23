@@ -51,6 +51,7 @@ runs:
         tenv terragrunt install
 
     - name: Cache tenv (w/ Terraform and Terragrunt) installation
+      if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
       id: cache-tenv-save
       uses: actions/cache/save@v4
       with:
