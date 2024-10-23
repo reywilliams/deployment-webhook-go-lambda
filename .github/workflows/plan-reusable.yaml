@@ -31,3 +31,4 @@ jobs:
           tenv_version: ${{ inputs.tenv_version }}
           WEHBOOK_SECRET: ${{ secrets.WEHBOOK_SECRET }}
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          plugin_cache_dir: ${{ github.workspace }}/.terraform.d/plugin-cache
