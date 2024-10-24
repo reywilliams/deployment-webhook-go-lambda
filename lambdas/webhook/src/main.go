@@ -60,14 +60,14 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	logAPIGatewayRequest(request)
 	log = addAPIGatewayRequestToLogContext(request)
 
-	payload, err := github.ValidatePayloadFromBody(request.Headers[CONTENT_TYPE_HEADER], strings.NewReader(request.Body), request.Headers[github.SHA256SignatureHeader], s.webhookSecretKey)
+	err := github.ValidateSignature(request.Headers[github.SHA256SignatureHeader], []byte(request.Body), s.webhookSecretKey)
 	if err != nil {
 		errMsg := fmt.Sprintf("invalid payload; %s", err)
 		log.Errorln("invalid payload", zap.Error(err))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
-	event, err := github.ParseWebHook(request.Headers[github.EventTypeHeader], payload)
+	event, err := github.ParseWebHook(request.Headers[github.EventTypeHeader], []byte(request.Body))
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to parse webhook; %s", err)
 		log.Errorln("failed to parse webhook", zap.Error(err))
@@ -132,12 +132,15 @@ func ShouldUseMock(headers *map[string]string) bool {
 			if strings.ToLower(val) == "true" {
 				log.Debugln("mocking is enabled through mocking header")
 			}
+			return exists && strings.ToLower(val) == "true"
+
+		} else {
+			log.Debugln("mocking header not present")
+			return false
 		}
-		return exists && strings.ToLower(val) == "true"
-	} else {
-		log.Debugln("mocking header not present")
-		return false
 	}
+
+	return false
 }
 
 /*
