@@ -33,3 +33,22 @@ resource "aws_api_gateway_rest_api_policy" "only_github_hook_ips" {
   policy = data.aws_iam_policy_document.only_github_hook_ips_policy.json
 }
 
+
+# allows GitHub to invoke API with their non-AWS identity
+data "aws_iam_policy_document" "allow_anonymous_execution" {
+  statement {
+    effect    = "Allow"
+    actions   = ["execute-api:Invoke"]
+    resources = [aws_api_gateway_rest_api.webhook.execution_arn]
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+  }
+}
+
+resource "aws_api_gateway_rest_api_policy" "allow_github_invoke" {
+  rest_api_id = aws_api_gateway_rest_api.webhook.id
+
+  policy = data.aws_iam_policy_document.allow_anonymous_execution.json
+}
