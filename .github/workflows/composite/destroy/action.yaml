@@ -1,0 +1,59 @@
+inputs:
+  application:
+    description: The application to interact with
+    required: true
+  tenv_version:
+    description: The tenv version to use
+    required: true
+  github_workspace:
+    description: GitHub Workspace Path
+    required: true
+    default: /github/workspace
+  WEBHOOK_SECRET:
+    description: "GitHub Webhook secret"
+    required: false
+  PAT_TOKEN:
+    description: "Github PAT Token For Making Calls"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Create Plugin Cache Directory
+      shell: bash
+      run: |
+        mkdir -p ${{ inputs.github_workspace }}/.terraform.d/plugin-cache
+
+    - name: Cache Terraform Plugins
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.github_workspace }}/.terraform.d/plugin-cache
+        key: ${{ runner.os }}-tf-plugin-cache-${{ hashFiles('**/.*terraform-version') }}-${{ inputs.application }}
+        restore-keys:
+          key: ${{ runner.os }}-tf-plugin-cache-${{ hashFiles('**/.*terraform-version') }}-
+          key: ${{ runner.os }}-tf-plugin-cache-
+
+    - name: Get Tooling Binaries
+      uses: ./.github/workflows/composite/tooling-binaries
+      with:
+        application: ${{ inputs.application }}
+        tenv_version: ${{ inputs.tenv_version }}
+        github_workspace: ${{ inputs.github_workspace }}
+
+    - name: Init Terragrunt application
+      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      shell: bash
+      env:
+        TF_PLUGIN_CACHE_DIR: ${{ inputs.github_workspace }}/.terraform.d/plugin-cache
+        TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "enabled"
+      run: |
+        terragrunt init --input=false
+
+    - name: Destroy Terragrunt application
+      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      shell: bash
+      env:
+        TF_VAR_github_PAT_secret_string: ${{ inputs.PAT_TOKEN }}
+        TF_VAR_github_webhook_secret_string: ${{ inputs.WEBHOOK_SECRET }}
+      run: |
+        terragrunt --terragrunt-non-interactive destroy -auto-approve

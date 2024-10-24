@@ -1,0 +1,36 @@
+on:
+  workflow_call:
+    inputs:
+      application:
+        description: The application to interact with
+        required: true
+        type: string
+      tenv_version:
+        description: The tenv version to use
+        required: true
+        type: string
+
+jobs:
+  destory-application:
+    concurrency: tg-destory-${{ inputs.application }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Add profile credentials to ~/.aws/credentials
+        shell: bash
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }} --profile ${{ vars.AWS_PROFILE }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }} --profile ${{ vars.AWS_PROFILE }}
+          aws configure set region us-west-2 --profile ${{ vars.AWS_PROFILE }}
+
+      - name: destory ${{ inputs.application }}
+        uses: ./.github/workflows/composite/destory
+        with:
+          application: ${{ inputs.application }}
+          tenv_version: ${{ inputs.tenv_version }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          github_workspace: ${{ github.workspace }}

@@ -1,0 +1,23 @@
+name: destroy/one
+run-name: destroy/one of ${{ inputs.application }} against ref ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      application:
+        description: The application to interact with
+        type: choice
+        options:
+          - webhook-lambda
+          - api-gateway
+
+jobs:
+  destroy:
+    name: destroy ${{inputs.application}}
+    uses: ./.github/workflows/destroy-reusable.yaml
+    secrets: inherit
+    permissions:
+      contents: read
+    with:
+      application: ${{inputs.application}}
+      tenv_version: ${{ vars.tenv_version }}

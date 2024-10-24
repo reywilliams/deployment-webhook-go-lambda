@@ -1,0 +1,25 @@
+name: destroy/all
+run-name: destroy/all against ref ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+
+jobs:
+  destroy-webhook-lambda:
+    uses: ./.github/workflows/destroy-reusable.yaml
+    secrets: inherit
+    permissions:
+      contents: read
+    with:
+      application: webhook-lambda
+      tenv_version: ${{ vars.tenv_version }}
+
+  destroy-api-gateway:
+    needs: [destroy-webhook-lambda]
+    uses: ./.github/workflows/destroy-reusable.yaml
+    secrets: inherit
+    permissions:
+      contents: read
+    with:
+      application: api-gateway
+      tenv_version: ${{ vars.tenv_version }}
