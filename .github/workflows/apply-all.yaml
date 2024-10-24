@@ -15,6 +15,7 @@ jobs:
       tenv_version: ${{ vars.tenv_version }}
 
   apply-api-gateway:
+    needs: [apply-webhook-lambda]
     uses: ./.github/workflows/apply-reusable.yaml
     secrets: inherit
     permissions:
