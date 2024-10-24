@@ -45,6 +45,7 @@ runs:
       shell: bash
       run: |
         sudo dpkg -i tenv_${{ inputs.tenv_version }}_amd64.deb
+        tenv update-path
 
     - name: Install Terraform
       working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
