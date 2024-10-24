@@ -14,7 +14,7 @@ on:
 jobs:
   apply:
     name: apply ${{inputs.application}}
-    uses: ./.github/workflows/reusable/apply.yaml
+    uses: ./.github/workflows/apply-reusable.yaml
     secrets: inherit
     permissions:
       contents: read

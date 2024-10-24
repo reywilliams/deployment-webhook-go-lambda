@@ -6,7 +6,7 @@ on:
 
 jobs:
   apply-webhook-lambda:
-    uses: ./.github/workflows/reusable/apply.yaml
+    uses: ./.github/workflows/apply-reusable.yaml
     secrets: inherit
     permissions:
       contents: read
@@ -15,7 +15,7 @@ jobs:
       tenv_version: ${{ vars.tenv_version }}
 
   apply-api-gateway:
-    uses: ./.github/workflows/reusable/apply.yaml
+    uses: ./.github/workflows/apply-reusable.yaml
     secrets: inherit
     permissions:
       contents: read

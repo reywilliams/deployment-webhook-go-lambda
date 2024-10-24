@@ -14,7 +14,7 @@ on:
 jobs:
   plan:
     name: Plan ${{inputs.application}}
-    uses: ./.github/workflows/reusable/plan.yaml
+    uses: ./.github/workflows/plan-reusable.yaml
     secrets: inherit
     permissions:
       contents: read
