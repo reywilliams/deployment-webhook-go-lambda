@@ -53,4 +53,4 @@ runs:
         TF_VAR_github_PAT_secret_string: ${{ inputs.PAT_TOKEN }}
         TF_VAR_github_webhook_secret_string: ${{ inputs.WEBHOOK_SECRET }}
       run: |
-        terragrunt apply --input=false
+        terragrunt --terragrunt-non-interactive apply -auto-approve
