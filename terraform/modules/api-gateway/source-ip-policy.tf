@@ -11,7 +11,7 @@ data "aws_iam_policy_document" "only_github_hook_ips_policy" {
   statement {
     effect    = "Deny"
     actions   = ["execute-api:Invoke"]
-    resources = [aws_api_gateway_rest_api.webhook.execution_arn]
+    resources = ["${aws_api_gateway_rest_api.webhook.execution_arn}/*"]
 
 
     condition {
@@ -29,7 +29,7 @@ data "aws_iam_policy_document" "only_github_hook_ips_policy" {
   statement {
     effect    = "Allow"
     actions   = ["execute-api:Invoke"]
-    resources = [aws_api_gateway_rest_api.webhook.execution_arn]
+    resources = ["${aws_api_gateway_rest_api.webhook.execution_arn}/*"]
     principals {
       type        = "*"
       identifiers = ["*"]
