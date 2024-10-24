@@ -1,7 +1,7 @@
 resource "aws_api_gateway_method" "post_webhook" {
   rest_api_id      = aws_api_gateway_rest_api.webhook.id
   resource_id      = aws_api_gateway_resource.webhook.id
-  api_key_required = true
+  api_key_required = var.use_api_key
 
   http_method   = local.POST_METHOD
   authorization = "NONE" # TODO: look into changing this to CUSTOM/use Oauth

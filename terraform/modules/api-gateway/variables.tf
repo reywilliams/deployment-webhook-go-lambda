@@ -37,3 +37,9 @@ variable "gateway_usage_quota_limit" {
   description = "plan usage quota limit."
   default     = 50
 }
+
+variable "use_api_key" {
+  type        = bool
+  description = "Flag to decide if an API key should be used"
+  default     = true
+}

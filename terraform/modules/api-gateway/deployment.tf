@@ -39,11 +39,13 @@ resource "aws_api_gateway_usage_plan" "env_stage" {
 }
 
 resource "aws_api_gateway_api_key" "webhook" {
+  count       = var.use_api_key ? 1 : 0
   name        = "${local.profile}-api-key-${aws_api_gateway_method.post_webhook.http_method}-${aws_api_gateway_resource.webhook.path_part}"
   description = "${local.profile} API key for REST API ${aws_api_gateway_rest_api.webhook.name} ${aws_api_gateway_method.post_webhook.http_method} method - '${aws_api_gateway_stage.env_stage.stage_name}' stage"
 }
 
 resource "aws_api_gateway_usage_plan_key" "env_stage" {
+  count         = var.use_api_key ? 1 : 0
   key_id        = aws_api_gateway_api_key.webhook.id
   key_type      = local.USAGE_PLAN_API_KEY_TYPE
   usage_plan_id = aws_api_gateway_usage_plan.env_stage.id

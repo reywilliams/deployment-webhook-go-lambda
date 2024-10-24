@@ -10,7 +10,7 @@ dependency "webhook-lambda" {
   config_path = "../webhook-lambda"
 
   mock_outputs = {
-    invoke_arn = "mocked-arn-for-lambda"
+    invoke_arn    = "mocked-arn-for-lambda"
     function_name = "mocked-function-name"
   }
 
@@ -22,4 +22,5 @@ dependency "webhook-lambda" {
 inputs = {
   aws_lambda_webhook_function_invoke_arn = dependency.webhook-lambda.outputs.invoke_arn
   aws_lambda_webhook_function_name       = dependency.webhook-lambda.outputs.function_name
+  use_api_key                            = false
 }
