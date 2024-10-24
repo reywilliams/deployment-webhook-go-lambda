@@ -28,7 +28,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ inputs.github_workspace }}/.terraform.d/plugin-cache
-        key: ${{ runner.os }}-tf-plugin-cache-${{ hashFiles('**/providers.tf') }}
+        key: ${{ runner.os }}-tf-plugin-cache-${{ hashFiles('**/.*terragrunt-version') }}
 
     - name: Get Tooling Binaries
       uses: ./.github/workflows/composite/tooling-binaries

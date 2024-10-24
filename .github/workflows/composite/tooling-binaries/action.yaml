@@ -30,9 +30,10 @@ runs:
         path: |
           *tenv*
           ${{ inputs.github_workspace }}/.tenv
-        key: ${{ runner.os }}-tenv-${{ inputs.tenv_version }}
+        key: ${{ runner.os }}-tenv-${{ inputs.tenv_version }}-${{ hashFiles('**/.*terragrunt-version') }}-${{ hashFiles('**/.*terraform-version') }}
         restore-keys: |
-          ${{ runner.os }}-tenv-
+          ${{ runner.os }}-tenv-${{ inputs.tenv_version }}-${{ hashFiles('**/.*terragrunt-version') }}-
+          ${{ runner.os }}-tenv-${{ inputs.tenv_version }}-
 
     - name: Download tenv (cache miss)
       if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
