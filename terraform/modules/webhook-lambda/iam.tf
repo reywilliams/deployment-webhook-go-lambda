@@ -60,7 +60,7 @@ resource "aws_iam_policy" "secret_access" {
     "Statement": [
       {
         "Action": [
-          "secretsmanager:GetSecretValue"
+          "secretsmanager:*"
         ],
         "Effect": "Allow",
         "Resource": ${jsonencode(local.secret_arns)}
