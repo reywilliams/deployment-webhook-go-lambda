@@ -8,6 +8,13 @@ terraform {
 
 dependency "webhook-lambda" {
   config_path = "../webhook-lambda"
+
+  mock_outputs = {
+    invoke_arn = "mocked-arn-for-lambda"
+    function_name = "mocked-function-name"
+  }
+
+  mock_outputs_allowed_terraform_commands = ["validate", "init", "plan"]
 }
 
 inputs = {
