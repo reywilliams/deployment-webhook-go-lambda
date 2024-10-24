@@ -14,7 +14,7 @@ dependency "webhook-lambda" {
     function_name = "mocked-function-name"
   }
 
-  mock_outputs_allowed_terraform_commands = ["validate", "init", "plan"]
+  mock_outputs_allowed_terraform_commands = ["validate", "init", "plan", "show"]
 
   mock_outputs_merge_strategy_with_state = "shallow"
 }
