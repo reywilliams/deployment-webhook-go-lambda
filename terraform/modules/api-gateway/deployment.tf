@@ -46,7 +46,7 @@ resource "aws_api_gateway_api_key" "webhook" {
 
 resource "aws_api_gateway_usage_plan_key" "env_stage" {
   count         = var.use_api_key ? 1 : 0
-  key_id        = aws_api_gateway_api_key.webhook.id
+  key_id        = aws_api_gateway_api_key.webhook[0].id
   key_type      = local.USAGE_PLAN_API_KEY_TYPE
   usage_plan_id = aws_api_gateway_usage_plan.env_stage.id
 }
