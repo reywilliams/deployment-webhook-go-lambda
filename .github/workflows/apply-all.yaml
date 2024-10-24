@@ -1,12 +1,12 @@
-name: plan/all
-run-name: plan/all against ref ${{ github.ref_name }}
+name: apply/all
+run-name: apply/all against ref ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
 
 jobs:
-  plan-webhook-lambda:
-    uses: ./.github/workflows/reusable/plan.yaml
+  apply-webhook-lambda:
+    uses: ./.github/workflows/reusable/apply.yaml
     secrets: inherit
     permissions:
       contents: read
@@ -14,8 +14,8 @@ jobs:
       application: webhook-lambda
       tenv_version: ${{ vars.tenv_version }}
 
-  plan-api-gateway:
-    uses: ./.github/workflows/reusable/plan.yaml
+  apply-api-gateway:
+    uses: ./.github/workflows/reusable/apply.yaml
     secrets: inherit
     permissions:
       contents: read

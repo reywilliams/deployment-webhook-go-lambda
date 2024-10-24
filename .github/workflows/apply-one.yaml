@@ -1,5 +1,5 @@
-name: plan/one
-run-name: plan/one of ${{ inputs.application }} against ref ${{ github.ref_name }}
+name: apply/one
+run-name: apply/one of ${{ inputs.application }} against ref ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
@@ -12,9 +12,9 @@ on:
           - api-gateway
 
 jobs:
-  plan:
-    name: Plan ${{inputs.application}}
-    uses: ./.github/workflows/reusable/plan.yaml
+  apply:
+    name: apply ${{inputs.application}}
+    uses: ./.github/workflows/reusable/apply.yaml
     secrets: inherit
     permissions:
       contents: read
