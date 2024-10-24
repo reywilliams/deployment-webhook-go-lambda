@@ -6,6 +6,7 @@ data "external" "github_webhook_ips" {
 # restricts API Gateway to source IPs from Github 
 # specifically the ones used for hooks 
 # see http://api.github.com/meta and look at "hooks"
+# and allows GitHub to invoke API with their non-AWS identity
 data "aws_iam_policy_document" "only_github_hook_ips_policy" {
   statement {
     effect    = "Deny"
@@ -24,18 +25,7 @@ data "aws_iam_policy_document" "only_github_hook_ips_policy" {
       identifiers = ["*"]
     }
   }
-}
 
-
-resource "aws_api_gateway_rest_api_policy" "only_github_hook_ips" {
-  rest_api_id = aws_api_gateway_rest_api.webhook.id
-
-  policy = data.aws_iam_policy_document.only_github_hook_ips_policy.json
-}
-
-
-# allows GitHub to invoke API with their non-AWS identity
-data "aws_iam_policy_document" "allow_anonymous_execution" {
   statement {
     effect    = "Allow"
     actions   = ["execute-api:Invoke"]
@@ -47,8 +37,9 @@ data "aws_iam_policy_document" "allow_anonymous_execution" {
   }
 }
 
-resource "aws_api_gateway_rest_api_policy" "allow_github_invoke" {
+
+resource "aws_api_gateway_rest_api_policy" "only_github_hook_ips" {
   rest_api_id = aws_api_gateway_rest_api.webhook.id
 
-  policy = data.aws_iam_policy_document.allow_anonymous_execution.json
+  policy = data.aws_iam_policy_document.only_github_hook_ips_policy.json
 }
