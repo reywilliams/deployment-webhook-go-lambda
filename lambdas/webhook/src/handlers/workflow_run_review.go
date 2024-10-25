@@ -383,8 +383,8 @@ func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) 
 		return nil, err
 	}
 
-	if event.GetWorkflowRun() != nil && event.GetWorkflowRun().GetWorkflowID() != 0 {
-		Current.ID = event.GetWorkflowRun().GetWorkflowID()
+	if event.GetWorkflowRun() != nil && event.GetWorkflowRun().GetID() != 0 {
+		Current.ID = event.GetWorkflowRun().GetID()
 	} else {
 		err := fmt.Errorf("workflow run or workflow run ID from pending deployment is nil or empty")
 		log.Errorln("invalid field", zap.Error(err))
