@@ -27,6 +27,7 @@ var (
 const (
 	TABLE_NAME_ENV_VAR_KEY = "DYNAMO_DB_TABLE_NAME"
 	TABLE_NAME_DEFAULT     = "deployment-webhooks-table"
+	REQUESTED_ACTION       = "requested"
 )
 
 type WorkflowRun struct {
@@ -77,7 +78,7 @@ func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.Wor
 	}
 
 	// we only handle request review events
-	if event.GetAction() != "requested" {
+	if event.GetAction() != REQUESTED_ACTION {
 		log.Debug("event was not for a request", zap.String("action", event.GetAction()))
 		return nil
 	}
@@ -374,10 +375,10 @@ func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) 
 		defer subSegment.Close(nil)
 	}
 
-	if event.GetRepo() != nil && event.GetRepo().GetOwner() != nil && event.GetRepo().GetOwner().GetName() != "" {
-		Current.owner = event.GetRepo().GetOwner().GetName()
+	if event.GetRepo() != nil && event.GetRepo().GetOwner() != nil && event.GetRepo().GetOwner().GetLogin() != "" {
+		Current.owner = event.GetRepo().GetOwner().GetLogin()
 	} else {
-		err := fmt.Errorf("repo or repo owner or repo owner name from pending deployment is nil or empty")
+		err := fmt.Errorf("repo or repo owner or repo owner login from pending deployment is nil or empty")
 		log.Errorln("invalid field", zap.Error(err))
 		return nil, err
 	}
