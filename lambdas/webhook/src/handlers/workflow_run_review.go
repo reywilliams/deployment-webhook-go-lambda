@@ -41,6 +41,7 @@ type WorkflowRun struct {
 func init() {
 	log = *logger.GetLogger().Sugar()
 	tableName = util.LookupEnv(TABLE_NAME_ENV_VAR_KEY, TABLE_NAME_DEFAULT, false)
+	Current = WorkflowRun{}
 }
 
 func RequesterHasPermission(ctx context.Context, environment string) (*bool, error) {
@@ -119,7 +120,7 @@ func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.Wor
 	// approve deployments for environments where requester has access
 	for _, pendingDeployment := range pendingDeployments {
 
-		environment := ""
+		var environment string
 		if pendingDeployment.GetEnvironment() != nil && pendingDeployment.GetEnvironment().GetName() != "" {
 			environment = pendingDeployment.GetEnvironment().GetName()
 		} else {
@@ -411,14 +412,14 @@ func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) 
 			return nil, err
 		}
 
-		if pendingDeployments != nil {
+		if len(pendingDeployments) > 0 {
 			return pendingDeployments, nil
 		}
 
 		localLogger.Warnln("No pending deployments found, retrying...", zap.Int("attempt", i+1), zap.Int("nextDelay", retryDelay))
 
 		time.Sleep(time.Second * time.Duration(retryDelay))
-		retryDelay *= 2 // exponential backoff
+		retryDelay ^= 2 // exponential backoff
 	}
 
 	return nil, fmt.Errorf("no pending deployments found after %d retries", maxRetries)

@@ -59,7 +59,6 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	}
 
 	logAPIGatewayRequest(request)
-	log = addAPIGatewayRequestToLogContext(request)
 
 	reqAccessor := core.RequestAccessor{}
 	httpReq, err := reqAccessor.ProxyEventToHTTPRequest(request)
@@ -111,21 +110,10 @@ func logAPIGatewayRequest(req events.APIGatewayProxyRequest) {
 			"Path":                  req.Path,
 			"Headers":               req.Headers,
 			"QueryStringParameters": req.QueryStringParameters,
-			"RequestBody":           req.Body,
+			"RequestBody":           req.Body[:100],
 			"IsBase64Encoded":       req.IsBase64Encoded,
 		}),
 	)
-}
-
-func addAPIGatewayRequestToLogContext(req events.APIGatewayProxyRequest) zap.SugaredLogger {
-	return *log.With("request", map[string]interface{}{
-		"HTTPMethod":            req.HTTPMethod,
-		"Path":                  req.Path,
-		"Headers":               req.Headers,
-		"QueryStringParameters": req.QueryStringParameters,
-		"RequestBody":           req.Body,
-		"IsBase64Encoded":       req.IsBase64Encoded,
-	})
 }
 
 func ShouldUseMock(headers *map[string]string) bool {
