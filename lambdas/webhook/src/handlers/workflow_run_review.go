@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 	"webhook/db"
 	gh "webhook/github"
 	"webhook/logger"
@@ -399,11 +400,24 @@ func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) 
 		return nil, err
 	}
 
-	pendingDeployments, resp, err := ghClient.Actions.GetPendingDeployments(ctx, Current.owner, Current.repository, Current.ID)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		localLogger.Errorln("error or incorrect status code while fetching pending deployments", zap.Error(err))
-		return nil, err
+	maxRetries := 3
+	retryDelay := 1
+
+	for i := 0; i < maxRetries; i++ {
+
+		pendingDeployments, resp, err := ghClient.Actions.GetPendingDeployments(ctx, Current.owner, Current.repository, Current.ID)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			localLogger.Errorln("error or incorrect status code while fetching pending deployments", zap.Error(err))
+			return nil, err
+		}
+
+		if pendingDeployments != nil {
+			return pendingDeployments, nil
+		}
+
+		time.Sleep(time.Second * time.Duration(retryDelay))
+		retryDelay *= 2 // exponential backoff
 	}
 
-	return pendingDeployments, nil
+	return nil, nil
 }
