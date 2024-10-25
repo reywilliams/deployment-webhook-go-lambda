@@ -59,7 +59,7 @@ func RequesterHasPermission(ctx context.Context, environment string) (*bool, err
 		return nil, err
 	}
 
-	hasAccess, err := checkRequesterAccess(ctx, dynamodbClient, Current.requester, Current.repository, environment)
+	hasAccess, err := checkRequesterAccess(ctx, dynamodbClient, strings.ToLower(Current.requester), strings.ToLower(Current.repository), strings.ToLower(environment))
 	if err != nil {
 		localLogger.Errorln("error observed while checking request access", zap.Error(err))
 		return nil, err
