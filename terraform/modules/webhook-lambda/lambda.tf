@@ -18,8 +18,8 @@ resource "aws_lambda_function" "webhook" {
     variables = {
       DYNAMO_DB_TABLE_NAME = module.dynamodb_table.table_name
       # you can also use the secret name
-      GITHUB_WEBHOOK_SECRET_NAME = module.github_PAT_secret.secret_ARN
-      GITHUB_PAT_SECRET_NAME     = module.github_webhook_secret.secret_ARN
+      GITHUB_WEBHOOK_SECRET_NAME = module.github_webhook_secret.secret_ARN
+      GITHUB_PAT_SECRET_NAME     = module.github_PAT_secret.secret_ARN
     }
   }
 }
