@@ -73,7 +73,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	if err != nil {
 		errMsg := fmt.Sprintf("invalid payload; %s", err)
 		log.Errorln("invalid payload", zap.Error(err))
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusUnauthorized, Body: buildResponseBody(errMsg, http.StatusUnauthorized)}, nil
 	}
 	event, err := github.ParseWebHook(github.WebHookType(httpReq), payload)
 	if err != nil {
@@ -83,8 +83,8 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	}
 
 	switch event := event.(type) {
-	case *github.DeploymentReviewEvent:
-		err := handlers.HandleDeploymentReviewEvent(ctx, Mocking, event)
+	case *github.WorkflowRunEvent:
+		err := handlers.HandleWorkflowRunEvent(ctx, Mocking, event)
 		if err != nil {
 			log.Errorln("error while handling event", zap.Error(err), zap.String("event_type", "deployment_status"))
 		}

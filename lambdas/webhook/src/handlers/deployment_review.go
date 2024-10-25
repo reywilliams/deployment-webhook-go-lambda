@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -22,6 +21,7 @@ import (
 var (
 	log       zap.SugaredLogger
 	tableName string
+	Current   WorkflowRun
 )
 
 const (
@@ -29,20 +29,26 @@ const (
 	TABLE_NAME_DEFAULT     = "deployment-webhooks-table"
 )
 
+type WorkflowRun struct {
+	repository string
+	ID         int64
+	owner      string
+	requester  string
+}
+
 func init() {
 	log = *logger.GetLogger().Sugar()
 	tableName = util.LookupEnv(TABLE_NAME_ENV_VAR_KEY, TABLE_NAME_DEFAULT, false)
 }
 
-func RequesterHasPermission(ctx context.Context, requester string, repository string, environment string) (*bool, error) {
+func RequesterHasPermission(ctx context.Context, environment string) (*bool, error) {
 	_, subSegment := xray.BeginSubsegment(ctx, "RequesterHasPermission")
 	if subSegment != nil {
 		traceID := subSegment.TraceID
 		log = *log.With(zap.String("traceID", traceID))
 		defer subSegment.Close(nil)
 	}
-
-	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
+	localLogger := log.With(zap.String("environment", environment))
 
 	localLogger.Infoln("checking if requester has permission")
 
@@ -52,7 +58,7 @@ func RequesterHasPermission(ctx context.Context, requester string, repository st
 		return nil, err
 	}
 
-	hasAccess, err := checkRequesterAccess(ctx, dynamodbClient, requester, repository, environment)
+	hasAccess, err := checkRequesterAccess(ctx, dynamodbClient, Current.requester, Current.repository, environment)
 	if err != nil {
 		localLogger.Errorln("error observed while checking request access", zap.Error(err))
 		return nil, err
@@ -61,9 +67,9 @@ func RequesterHasPermission(ctx context.Context, requester string, repository st
 	return hasAccess, nil
 }
 
-func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *github.DeploymentReviewEvent) error {
+func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.WorkflowRunEvent) error {
 
-	_, subSegment := xray.BeginSubsegment(ctx, "HandleDeploymentReviewEvent")
+	_, subSegment := xray.BeginSubsegment(ctx, "HandleWorkflowRunEvent")
 	if subSegment != nil {
 		traceID := subSegment.TraceID
 		log = *log.With(zap.String("traceID", traceID))
@@ -72,46 +78,74 @@ func HandleDeploymentReviewEvent(ctx context.Context, mocking bool, event *githu
 
 	// we only handle request review events
 	if event.GetAction() != "requested" {
-		log.Debug("deployment review event was not for a request", zap.String("action", event.GetAction()))
+		log.Debug("event was not for a request", zap.String("action", event.GetAction()))
 		return nil
 	}
 
-	requester := event.Requester.GetEmail()
-	repository := event.Repo.GetName()
-	environment := event.GetEnvironment()
-
-	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
-
-	localLogger.Infof("Processing event: %T", event)
-
-	if util.AnyStringsEmpty(requester, repository, environment) {
-		localLogger.Infoln("an input string was empty")
-		return errors.New("an input was string was empty")
+	// get the requestor and their repo
+	if event.GetSender() != nil && event.GetSender().GetEmail() != "" {
+		Current.requester = event.GetSender().GetEmail()
+	} else {
+		err := fmt.Errorf("sender or sender email from event payload is nil or empty")
+		log.Errorln("invalid field", zap.Error(err))
+		return err
 	}
+	if event.GetRepo() != nil && event.GetRepo().GetName() != "" {
+		Current.repository = event.Repo.GetName()
+	} else {
+		err := fmt.Errorf("repo or repo name from event payload is nil or empty")
+		log.Errorln("invalid field", zap.Error(err))
+		return err
+	}
+
+	log = *log.With(zap.String("requester", Current.requester), zap.String("repository", Current.repository))
 
 	if mocking {
-		message := fmt.Sprintf("requester %s has needs a review for %s environment in %s repo!", requester, environment, repository)
-		localLogger.Infof("constructed message: %s", message)
+		message := fmt.Sprintf("requester %s has needs a review in %s repo!", Current.requester, Current.repository)
+		log.Infof("constructed message: %s", message)
 		return nil
-	} else {
-		requesterHasPerm, err := RequesterHasPermission(ctx, requester, repository, environment)
+	}
+
+	pendingDeployments, err := getPendingDeployments(ctx, event)
+	if err != nil {
+		log.Errorln("error while fetching pending deployments to handle workflow run event")
+		return err
+	}
+
+	log.Infof("Processing event: %T", event)
+
+	// approve deployments for environments where requester has access
+	for _, pendingDeployment := range pendingDeployments {
+
+		environment := ""
+		if pendingDeployment.GetEnvironment() != nil && pendingDeployment.GetEnvironment().GetName() != "" {
+			environment = pendingDeployment.GetEnvironment().GetName()
+		} else {
+			// skip invalid or empty environment names
+			continue
+		}
+
+		// check if requestor (sender) has permission for repo/env
+		requesterHasPerm, err := RequesterHasPermission(ctx, environment)
 		if err != nil {
-			localLogger.Errorln("error observed while checking if requester has permission", zap.Error(err))
+			log.Errorln("error observed while checking if requester has permission", zap.Error(err))
 			return err
 		}
 
+		// approve the pending deployment if user has permission
 		if requesterHasPerm != nil && *requesterHasPerm {
-			localLogger.Info("requester has permission, will attempt to approve deployments")
+			log.Info("requester has permission, will attempt to approve pending deployment")
 
-			err := approveDeploymentReview(ctx, event)
+			err := approvePendingDeployment(ctx, pendingDeployment)
 			if err != nil {
-				localLogger.Error("error observed while trying to approve deployment review", zap.Error(err))
+				log.Error("error observed while trying to approve pending deployment", zap.Error(err))
+				return err
 			}
 		}
-
-		// no error yielded, return nil
-		return nil
 	}
+
+	// no error yielded, return nil
+	return nil
 }
 
 /*
@@ -132,8 +166,6 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		defer subSegment.Close(nil)
 	}
 
-	localLogger := log.With(zap.String("requester", requester), zap.String("repository", repository), zap.String("environment", environment))
-
 	accessCheck := make(chan *bool, 4) // channel to store access checks
 	errChan := make(chan error, 4)     // chanel to store errors
 
@@ -153,11 +185,11 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		requesterHasExactAccess, err := checkAccessByInput(ctx, exactAccessInput, client)
 		if err != nil {
 			errChan <- err
-			localLogger.Errorln("error observed while trying to check if requester has exact access", zap.Error(err))
+			log.Errorln("error observed while trying to check if requester has exact access", zap.Error(err))
 			return
 		}
 		if requesterHasExactAccess != nil && *requesterHasExactAccess {
-			localLogger.Infoln("requester has exact access")
+			log.Infoln("requester has exact access")
 			accessCheck <- requesterHasExactAccess
 		}
 
@@ -177,11 +209,11 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		requesterHasRepoAccess, err := checkAccessByInput(ctx, repoAccessInput, client)
 		if err != nil {
 			errChan <- err
-			localLogger.Errorln("error observed while trying to check if requester has repo level access", zap.Error(err))
+			log.Errorln("error observed while trying to check if requester has repo level access", zap.Error(err))
 			return
 		}
 		if requesterHasRepoAccess != nil && *requesterHasRepoAccess {
-			localLogger.Infoln("requester has repo access")
+			log.Infoln("requester has repo access")
 			accessCheck <- requesterHasRepoAccess
 		}
 	}()
@@ -200,11 +232,11 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		requesterHasOrgAccess, err := checkAccessByInput(ctx, orgAccessInput, client)
 		if err != nil {
 			errChan <- err
-			localLogger.Errorln("error observed while trying to check if requester has org access", zap.Error(err))
+			log.Errorln("error observed while trying to check if requester has org access", zap.Error(err))
 			return
 		}
 		if requesterHasOrgAccess != nil && *requesterHasOrgAccess {
-			localLogger.Infoln("requester has org access")
+			log.Infoln("requester has org access")
 			accessCheck <- requesterHasOrgAccess
 		}
 	}()
@@ -223,11 +255,11 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		requesterHasRepoAccess, err := checkAccessByInput(ctx, repoAccessInput, client)
 		if err != nil {
 			errChan <- err
-			localLogger.Errorln("error observed while trying to check if requester has environment level access", zap.Error(err))
+			log.Errorln("error observed while trying to check if requester has environment level access", zap.Error(err))
 			return
 		}
 		if requesterHasRepoAccess != nil && *requesterHasRepoAccess {
-			localLogger.Infoln("requester has environment access")
+			log.Infoln("requester has environment access")
 			accessCheck <- requesterHasRepoAccess
 		}
 	}()
@@ -241,7 +273,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		select { // read from error and access chanel
 		case result, ok := <-accessCheck:
 			if ok && result != nil && *result {
-				localLogger.Infoln("requester has access")
+				log.Infoln("requester has access")
 				return result, nil // determined access, exit early
 			}
 		case err, ok := <-errChan:
@@ -262,7 +294,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 
 	// requester did not have any access, return false
 	requesterAccess := false
-	localLogger.Infoln("requester did not have access")
+	log.Infoln("requester did not have access")
 	return &requesterAccess, nil
 }
 
@@ -286,59 +318,91 @@ func checkAccessByInput(ctx context.Context, input *dynamodb.GetItemInput, clien
 
 /*
 *
-uses event attributes (owner, repo, runID) to get environment IDs and then use those
-environment IDs to approve all pending deployments
+approves the pending deployment passed as user has access
 */
-func approveDeploymentReview(ctx context.Context, event *github.DeploymentReviewEvent) error {
+func approvePendingDeployment(ctx context.Context, pendingDeployment *github.PendingDeployment) error {
 
-	_, subSegment := xray.BeginSubsegment(ctx, "approveDeploymentReview")
+	_, subSegment := xray.BeginSubsegment(ctx, "approvePendingDeployment")
 	if subSegment != nil {
 		traceID := subSegment.TraceID
 		log = *log.With(zap.String("traceID", traceID))
 		defer subSegment.Close(nil)
 	}
 
+	envID := int64(0)
+	if pendingDeployment.GetEnvironment() != nil && pendingDeployment.GetEnvironment().GetID() != 0 {
+		envID = pendingDeployment.GetEnvironment().GetID()
+	} else {
+		err := fmt.Errorf("environment or environment ID from pending deployment payload is nil or empty")
+		log.Errorln("invalid field", zap.Error(err))
+		return err
+	}
+
+	localLogger := log.With(zap.Int64("envID", envID))
+
 	ghClient, err := gh.GetGitHubClient(ctx)
 	if err != nil {
-		log.Errorln("error while getting github client", zap.Error(err))
+		localLogger.Errorln("error while getting github client to approve pending deployments", zap.Error(err))
 		return err
 	}
 
-	owner := event.GetOrganization().GetName()
-	repo := event.GetRepo().GetName()
-	runID := event.WorkflowJobRun.GetID()
+	req := github.PendingDeploymentsRequest{EnvironmentIDs: []int64{envID}, State: "approved", Comment: "Approved via Go GitHub Webhook Lambda! 🚀"}
 
-	localLogger := log.With(zap.String("owner", owner), zap.String("repo", repo), zap.Int64("runID", runID))
-
-	if util.AnyStringsEmpty(owner, repo) || runID == 0 {
-		err := fmt.Errorf("event values continued zero values")
-		localLogger.Errorln("error observed while getting values to approve review", zap.Error(err))
-		return err
-	}
-
-	gotPendingDeployments, getPendDeployResp, gotPendingDeploymentsErr := ghClient.Actions.GetPendingDeployments(ctx, owner, repo, runID)
-	if getPendDeployResp.Response.StatusCode != http.StatusOK || gotPendingDeploymentsErr != nil {
-		localLogger.Errorln("error or incorrect status code observed while getting pending deployments", zap.Error(gotPendingDeploymentsErr), zap.Int("status_code", getPendDeployResp.Response.StatusCode))
-		return gotPendingDeploymentsErr
-	}
-
-	var envIDs []int64
-	for _, pendingDeployment := range gotPendingDeployments {
-		envIDs = append(envIDs, pendingDeployment.GetEnvironment().GetID())
-	}
-
-	approvedDeployments, approvalResp, approvalErr := ghClient.Actions.PendingDeployments(ctx, owner, repo, runID, &github.PendingDeploymentsRequest{EnvironmentIDs: envIDs, State: "approved", Comment: "Approved via Go GitHub Webhook Lambda! 🚀"})
+	approvedDeployments, approvalResp, approvalErr := ghClient.Actions.PendingDeployments(ctx, Current.owner, Current.repository, Current.ID, &req)
 	if approvalResp.Response.StatusCode != http.StatusOK || approvalErr != nil {
-		localLogger.Error("error or incorrect status code observed while approving deployments", zap.Error(approvalErr), zap.Int("status_code", approvalResp.Response.StatusCode), zap.Int64s("env_IDs", envIDs))
+		localLogger.Error("error or incorrect status code observed while approving deployments", zap.Error(approvalErr), zap.Int("status_code", approvalResp.Response.StatusCode))
 		return approvalErr
 	}
 
 	var approvedDeploymentsURLs []string
-
 	for _, approvedDeployment := range approvedDeployments {
-		approvedDeploymentsURLs = append(approvedDeploymentsURLs, approvedDeployment.GetURL())
+		if approvedDeployment.GetURL() != "" {
+			approvedDeploymentsURLs = append(approvedDeploymentsURLs, approvedDeployment.GetURL())
+		}
 	}
+
 	localLogger.Infoln("approved deployments", zap.Strings("deployment_urls", approvedDeploymentsURLs))
 
 	return nil
+}
+
+func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) ([]*github.PendingDeployment, error) {
+	_, subSegment := xray.BeginSubsegment(ctx, "getPendingDeployments")
+	if subSegment != nil {
+		traceID := subSegment.TraceID
+		log = *log.With(zap.String("traceID", traceID))
+		defer subSegment.Close(nil)
+	}
+
+	if event.GetRepo() != nil && event.GetRepo().GetOwner() != nil && event.GetRepo().GetOwner().GetName() != "" {
+		Current.owner = event.GetRepo().GetOwner().GetName()
+	} else {
+		err := fmt.Errorf("repo or repo owner or repo owner name from pending deployment is nil or empty")
+		log.Errorln("invalid field", zap.Error(err))
+		return nil, err
+	}
+
+	if event.GetWorkflowRun() != nil && event.GetWorkflowRun().GetWorkflowID() != 0 {
+		Current.ID = event.GetWorkflowRun().GetWorkflowID()
+	} else {
+		err := fmt.Errorf("workflow run or workflow run ID from pending deployment is nil or empty")
+		log.Errorln("invalid field", zap.Error(err))
+		return nil, err
+	}
+
+	localLogger := log.With(zap.String("owner", Current.owner), zap.Int64("runID", Current.ID))
+
+	ghClient, err := gh.GetGitHubClient(ctx)
+	if err != nil {
+		localLogger.Errorln("error while github client to fetch pending deployments", zap.Error(err))
+		return nil, err
+	}
+
+	pendingDeployments, resp, err := ghClient.Actions.GetPendingDeployments(ctx, Current.owner, Current.repository, Current.ID)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		localLogger.Errorln("error or incorrect status code while fetching pending deployments", zap.Error(err))
+		return nil, err
+	}
+
+	return pendingDeployments, nil
 }

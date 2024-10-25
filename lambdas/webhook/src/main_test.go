@@ -51,7 +51,7 @@ func initReqs() {
 func TestInValidPayload(t *testing.T) {
 	t.Parallel()
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), invalidPayloadReq)
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "incorrect status code")
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("invalid payload"))
 }
 
@@ -85,7 +85,7 @@ func TestSupportedEventType(t *testing.T) {
 
 func generateAPIGatewayProxyRequest(eventTypeHeader *string, payload *string, validateSignature bool) events.APIGatewayProxyRequest {
 	if eventTypeHeader == nil {
-		temp := "deployment_review"
+		temp := "workflow_run"
 		eventTypeHeader = &temp
 	}
 
