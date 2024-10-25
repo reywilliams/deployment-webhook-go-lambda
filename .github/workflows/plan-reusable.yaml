@@ -33,8 +33,9 @@ jobs:
       - name: Build Lambda
         shell: bash
         run: |
-          chmod +x ./lambdas/webhook/scripts/build_lambda.sh
-          ./lambdas/webhook/scripts/build_lambda.sh
+          cd ./lambdas/webhook/
+          chmod +x ./scripts/build_lambda.sh
+          ./scripts/build_lambda.sh
 
       - name: Plan ${{ inputs.application }}
         uses: ./.github/workflows/composite/plan
