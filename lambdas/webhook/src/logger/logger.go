@@ -64,7 +64,9 @@ func (x *xrayZapLogger) Log(ll xraylog.LogLevel, msg fmt.Stringer) {
 	logger := GetLogger().Sugar()
 	switch ll {
 	case xraylog.LogLevelDebug:
-		logger.Debugln(msg.String())
+		if os.Getenv("INTERNAL_XRAY_DEBUG_LOGS") == "true" {
+			logger.Debugln(msg.String())
+		}
 	case xraylog.LogLevelInfo:
 		logger.Infoln(msg.String())
 	case xraylog.LogLevelWarn:
