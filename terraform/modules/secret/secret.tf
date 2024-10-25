@@ -3,8 +3,9 @@ locals {
 }
 
 resource "aws_secretsmanager_secret" "this" {
-  name        = var.secret_name
-  description = var.secret_description
+  name                    = var.secret_name
+  description             = var.secret_description
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "this" {
