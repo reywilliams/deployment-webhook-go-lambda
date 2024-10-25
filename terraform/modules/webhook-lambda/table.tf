@@ -4,7 +4,7 @@ module "dynamodb_table" {
   table_name   = "${local.profile}-table"
   billing_mode = "PROVISIONED"
 
-  hash_key  = "email"
+  hash_key  = "login"
   range_key = "repo-env"
 
   read_capacity  = 5

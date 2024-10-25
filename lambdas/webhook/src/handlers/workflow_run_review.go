@@ -83,10 +83,10 @@ func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.Wor
 	}
 
 	// get the requestor and their repo
-	if event.GetSender() != nil && event.GetSender().GetEmail() != "" {
-		Current.requester = event.GetSender().GetEmail()
+	if event.GetSender() != nil && event.GetSender().GetLogin() != "" {
+		Current.requester = event.GetSender().GetLogin()
 	} else {
-		err := fmt.Errorf("sender or sender email from event payload is nil or empty")
+		err := fmt.Errorf("sender or sender login from event payload is nil or empty")
 		log.Errorln("invalid field", zap.Error(err))
 		return err
 	}
@@ -178,7 +178,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		exactAccessInput := &dynamodb.GetItemInput{
 			TableName: &tableName,
 			Key: map[string]types.AttributeValue{
-				"email":    &types.AttributeValueMemberS{Value: requester},
+				"login":    &types.AttributeValueMemberS{Value: requester},
 				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{repository, environment}, "#")},
 			},
 		}
@@ -202,7 +202,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		repoAccessInput := &dynamodb.GetItemInput{
 			TableName: &tableName,
 			Key: map[string]types.AttributeValue{
-				"email":    &types.AttributeValueMemberS{Value: requester},
+				"login":    &types.AttributeValueMemberS{Value: requester},
 				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{repository, "*"}, "#")},
 			},
 		}
@@ -225,7 +225,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		orgAccessInput := &dynamodb.GetItemInput{
 			TableName: &tableName,
 			Key: map[string]types.AttributeValue{
-				"email":    &types.AttributeValueMemberS{Value: requester},
+				"login":    &types.AttributeValueMemberS{Value: requester},
 				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{"*", "*"}, "#")},
 			},
 		}
@@ -248,7 +248,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 		repoAccessInput := &dynamodb.GetItemInput{
 			TableName: &tableName,
 			Key: map[string]types.AttributeValue{
-				"email":    &types.AttributeValueMemberS{Value: requester},
+				"login":    &types.AttributeValueMemberS{Value: requester},
 				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{"*", environment}, "#")},
 			},
 		}
