@@ -400,7 +400,7 @@ func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) 
 		return nil, err
 	}
 
-	maxRetries := 3
+	maxRetries := 5
 	retryDelay := 1
 
 	for i := 0; i < maxRetries; i++ {
