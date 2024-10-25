@@ -32,6 +32,7 @@ jobs:
 
       - name: Build Lambda
         shell: bash
+        if: ${{ inputs.application}} == 'webhook-lambda'
         run: |
           cd ./lambdas/webhook/
           chmod +x ./scripts/build_lambda.sh
