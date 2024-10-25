@@ -68,6 +68,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError, Body: buildResponseBody(errMsg, http.StatusInternalServerError)}, nil
 	}
 
+	fmt.Printf("webhook secret: %s", s.webhookSecretKey)
 	payload, err := github.ValidatePayload(httpReq, s.webhookSecretKey)
 	if err != nil {
 		errMsg := fmt.Sprintf("invalid payload; %s", err)
