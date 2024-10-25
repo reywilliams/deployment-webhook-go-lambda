@@ -26,6 +26,10 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }} --profile ${{ vars.AWS_PROFILE }}
           aws configure set region us-west-2 --profile ${{ vars.AWS_PROFILE }}
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.23.0"
+
       - name: Build Lambda
         shell: bash
         run: |
