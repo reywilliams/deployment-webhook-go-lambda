@@ -11,8 +11,8 @@ on:
         type: string
 
 jobs:
-  destory-application:
-    concurrency: tg-destory-${{ inputs.application }}
+  destroy-application:
+    concurrency: tg-destroy-${{ inputs.application }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -26,8 +26,8 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }} --profile ${{ vars.AWS_PROFILE }}
           aws configure set region us-west-2 --profile ${{ vars.AWS_PROFILE }}
 
-      - name: destory ${{ inputs.application }}
-        uses: ./.github/workflows/composite/destory
+      - name: destroy ${{ inputs.application }}
+        uses: ./.github/workflows/composite/destroy
         with:
           application: ${{ inputs.application }}
           tenv_version: ${{ inputs.tenv_version }}
