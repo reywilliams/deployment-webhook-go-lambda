@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/awslabs/aws-lambda-go-api-proxy/core"
 	"github.com/google/go-github/v66/github"
 	"go.uber.org/zap"
 )
@@ -60,14 +61,20 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	logAPIGatewayRequest(request)
 	log = addAPIGatewayRequestToLogContext(request)
 
-	err := github.ValidateSignature(request.Headers[github.SHA256SignatureHeader], []byte(request.Body), s.webhookSecretKey)
+	reqAccessor := core.RequestAccessor{}
+	httpReq, err := reqAccessor.ProxyEventToHTTPRequest(request)
+	if err != nil {
+		errMsg := "error while transforming proxy event to http req"
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError, Body: buildResponseBody(errMsg, http.StatusInternalServerError)}, nil
+	}
+
+	payload, err := github.ValidatePayload(httpReq, s.webhookSecretKey)
 	if err != nil {
 		errMsg := fmt.Sprintf("invalid payload; %s", err)
 		log.Errorln("invalid payload", zap.Error(err))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
-
-	event, err := github.ParseWebHook(request.Headers[github.EventTypeHeader], []byte(request.Body))
+	event, err := github.ParseWebHook(github.WebHookType(httpReq), payload)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to parse webhook; %s", err)
 		log.Errorln("failed to parse webhook", zap.Error(err))
