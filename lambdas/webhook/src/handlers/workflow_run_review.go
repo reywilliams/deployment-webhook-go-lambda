@@ -415,9 +415,11 @@ func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) 
 			return pendingDeployments, nil
 		}
 
+		localLogger.Warnln("No pending deployments found, retrying...", zap.Int("attempt", i+1), zap.Int("nextDelay", retryDelay))
+
 		time.Sleep(time.Second * time.Duration(retryDelay))
 		retryDelay *= 2 // exponential backoff
 	}
 
-	return nil, nil
+	return nil, fmt.Errorf("no pending deployments found after %d retries", maxRetries)
 }
