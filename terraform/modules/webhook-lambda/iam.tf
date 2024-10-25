@@ -20,11 +20,11 @@ data "aws_iam_policy" "lambda_basic_execution" {
   arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# allows lambda to PUT/create, update, and batch write ITEMS
+# allows lambda to get items
 # specifically scoped to the table from the dynamodb_table module
 resource "aws_iam_policy" "lambda_dynamodb_write_policy" {
   name        = "lambda_dynamodb_policy"
-  description = "Policy to allow Lambda functions to write to DynamoDB"
+  description = "Policy to allow Lambda functions to fetch from DynamoDB"
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -32,9 +32,10 @@ resource "aws_iam_policy" "lambda_dynamodb_write_policy" {
       {
         Effect = "Allow",
         Action = [
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:BatchWriteItem"
+          # "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          # "dynamodb:UpdateItem",
+          # "dynamodb:BatchWriteItem"
         ],
         Resource = module.dynamodb_table.table_arn
       }
