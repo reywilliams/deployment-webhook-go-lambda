@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -19,7 +20,7 @@ import (
 )
 
 var (
-	log zap.SugaredLogger
+	logInstance *zap.SugaredLogger
 
 	Mocking bool
 )
@@ -34,7 +35,7 @@ const (
 )
 
 func init() {
-	log = *logger.GetLogger().Sugar()
+	logInstance = logger.GetLogger().Sugar()
 	logger.InitializeXRay()
 }
 
@@ -43,22 +44,24 @@ type GitHubEventMonitor struct {
 }
 
 func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-
-	Mocking = ShouldUseMock(&request.Headers)
-	webhookSecretErr := s.sourceSecret(ctx)
-	if webhookSecretErr != nil {
-		errMsg := "a webhook secret has not been configured"
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError, Body: buildResponseBody(errMsg, http.StatusInternalServerError)}, nil
-	}
+	funcLogger := logInstance.With()
 
 	_, subSegment := xray.BeginSubsegment(ctx, "HandleRequest")
 	if subSegment != nil {
 		traceID := subSegment.TraceID
-		log = *log.With(zap.String("traceID", traceID))
+		funcLogger = logInstance.With(zap.String("traceID", traceID))
 		defer subSegment.Close(nil)
 	}
 
-	logAPIGatewayRequest(request)
+	Mocking = ShouldUseMock(&request.Headers, funcLogger)
+	webhookSecretErr := s.sourceSecret(ctx)
+	if webhookSecretErr != nil {
+		errMsg := "a webhook secret has not been configured"
+		funcLogger.Errorln(errMsg)
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError, Body: buildResponseBody(errMsg, http.StatusInternalServerError)}, nil
+	}
+
+	logAPIGatewayRequest(request, funcLogger)
 
 	reqAccessor := core.RequestAccessor{}
 	httpReq, err := reqAccessor.ProxyEventToHTTPRequest(request)
@@ -70,13 +73,13 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	payload, err := github.ValidatePayload(httpReq, s.webhookSecretKey)
 	if err != nil {
 		errMsg := fmt.Sprintf("invalid payload; %s", err)
-		log.Errorln("invalid payload", zap.Error(err))
+		funcLogger.Errorln("invalid payload", zap.Error(err))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusUnauthorized, Body: buildResponseBody(errMsg, http.StatusUnauthorized)}, nil
 	}
 	event, err := github.ParseWebHook(github.WebHookType(httpReq), payload)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to parse webhook; %s", err)
-		log.Errorln("failed to parse webhook", zap.Error(err))
+		funcLogger.Errorln("failed to parse webhook", zap.Error(err))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
@@ -84,11 +87,13 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 	case *github.WorkflowRunEvent:
 		err := handlers.HandleWorkflowRunEvent(ctx, Mocking, event)
 		if err != nil {
-			log.Errorln("error while handling event", zap.Error(err), zap.String("event_type", "deployment_status"))
+			errMsg := fmt.Sprintf("error while handling event type %T", event)
+			funcLogger.Errorln(errMsg, zap.Error(err))
+			return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 		}
 	default:
 		errMsg := fmt.Sprintf("unsupported event type %T", event)
-		log.Errorln("unsupported event type", fmt.Errorf("unsupported event type %T", event))
+		funcLogger.Errorln(errMsg, zap.Error(errors.New(errMsg)))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
@@ -96,41 +101,40 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 }
 
 func main() {
-	defer log.Sync()
+	defer logInstance.Sync()
 
 	eventMonitor := &GitHubEventMonitor{}
-
 	lambda.Start(eventMonitor.HandleRequest)
 }
 
-func logAPIGatewayRequest(req events.APIGatewayProxyRequest) {
-	log.Infoln("received API gateway proxy request",
+func logAPIGatewayRequest(req events.APIGatewayProxyRequest, funcLogger *zap.SugaredLogger) {
+	funcLogger.Infoln("received API gateway proxy request",
 		zap.Any("request", map[string]interface{}{
 			"HTTPMethod":            req.HTTPMethod,
 			"Path":                  req.Path,
 			"Headers":               req.Headers,
 			"QueryStringParameters": req.QueryStringParameters,
-			"RequestBody":           req.Body[:100],
+			"Body":                  req.Body[:100],
 			"IsBase64Encoded":       req.IsBase64Encoded,
 		}),
 	)
 }
 
-func ShouldUseMock(headers *map[string]string) bool {
-	log.Debugln("checking if mocking header is present")
+func ShouldUseMock(headers *map[string]string, funcLogger *zap.SugaredLogger) bool {
+	funcLogger.Debugln("checking if mocking header is present")
 	if headers != nil {
 		val, exists := (*headers)[INTERNAL_MOCKING_HEADER]
 
 		if exists {
-			log.Debugln("mocking header present")
+			funcLogger.Debugln("mocking header present")
 
 			if strings.ToLower(val) == "true" {
-				log.Debugln("mocking is enabled through mocking header")
+				funcLogger.Debugln("mocking is enabled through mocking header")
 			}
 			return exists && strings.ToLower(val) == "true"
 
 		} else {
-			log.Debugln("mocking header not present")
+			funcLogger.Debugln("mocking header not present")
 			return false
 		}
 	}
@@ -164,7 +168,7 @@ func getWebhookSecret(ctx context.Context) (*string, error) {
 	webhookSecretName := util.LookupEnv(GITHUB_WEBHOOK_SECRET_NAME_ENV_VAR_KEY, GITHUB_WEBHOOK_SECRET_NAME_DEFAULT, false)
 	webhookSecret, err := secrets.GetSecretValue(ctx, webhookSecretName)
 	if webhookSecret == nil || err != nil {
-		log.Errorln("error while getting webhook secret value")
+		logInstance.Errorln("error while getting webhook secret value")
 		return nil, err
 	}
 

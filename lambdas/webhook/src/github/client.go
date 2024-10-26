@@ -16,7 +16,7 @@ var (
 
 	once sync.Once
 
-	log zap.SugaredLogger
+	logInstance *zap.SugaredLogger
 
 	githubPAT     string
 	sourcingError error
@@ -28,14 +28,14 @@ const (
 )
 
 func init() {
-	log = *logger.GetLogger().Sugar()
+	logInstance = logger.GetLogger().Sugar()
 }
 
 func GetGitHubClient(ctx context.Context) (*github.Client, error) {
 
 	// see if we already got a sourcing error
 	if sourcingError != nil {
-		log.Errorln("cannot source github PAT, cannot create new Github client instance", zap.Error(sourcingError))
+		logInstance.Errorln("cannot source github PAT, cannot create new Github client instance", zap.Error(sourcingError))
 		return nil, sourcingError
 	}
 
@@ -58,7 +58,7 @@ func getWebhookPAT(ctx context.Context) (*string, error) {
 	ghPATSecretName := util.LookupEnv(GITHUB_PAT_SECRET_NAME_ENV_VAR_KEY, GITHUB_PAT_SECRET_NAME_DEFAULT, false)
 	ghPAT, err := secrets.GetSecretValue(ctx, ghPATSecretName)
 	if ghPAT == nil || err != nil {
-		log.Errorln("error while getting github PAT secret value")
+		logInstance.Errorln("error while getting github PAT secret value")
 		return nil, err
 	}
 
