@@ -4,6 +4,16 @@
     <img src="images/gopherized.png" alt="Gopherized Icon" width="250"/>
 </p>
 
+## Table Of Contents
+
+1. [Diagram](#diagram)
+2. [Description](#description)
+3. [Features](#features)
+4. [Prerequisites](#prerequisites)
+5. [Setup and Deployment](#setup-and-deployment)
+
+## Diagram
+
 <p align="center">
     <img src="images/diagram.png" alt="Diagram" width="800"/>
 </p>
@@ -26,11 +36,12 @@ This project is a Go-based AWS Lambda function designed to handle GitHub `workfl
 
 ## Prerequisites
 
-- AWS Account with permissions to provision resources for Lambda, DynamoDB, Secrets Manager, X-Ray, and IAM roles.
+- [AWS Account](https://aws.amazon.com/free/) with permissions to provision resources for Lambda, DynamoDB, Secrets Manager, X-Ray, and IAM roles.
 - The [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) (to set up your [configured profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-format))
 - GitHub webhook integration [set up](https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks) for `workflow_run` [events](https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=requested#workflow_run) - securely note your webhook secret and set a temp URL.
 - [OpenTofu](https://opentofu.org/docs/intro/install/) and [Terragrunt](https://terragrunt.gruntwork.io/docs/getting-started/install/) installed.
-- tenv for automatically managing OpenTofu
+- [tenv](https://github.com/tofuutils/tenv?tab=readme-ov-file#installation) for automatically managing OpenTofu and Terragrunt
+- A [GitHub Personal Access Token (PAT)](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with **Read** and **Write** access to actions, deployments,
 
 ## Setup and Deployment
 
@@ -90,7 +101,7 @@ terragrunt run-all apply # apply those changes
 
 Update the temporary URL for your webhook with your the invoke URL for your API Gateway. See how to get your API's invoke URL [here](https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-call-api.html#apigateway-how-to-call-rest-api).
 
-![alt text](images/webhook-url.png)
+![webhook payload URL](images/webhook-url.png)
 
 7. **Set Up A Rule In Your DynamoDB Table**
 
@@ -125,3 +136,7 @@ aws dynamodb put-item \
     --item \
         '{"login": {"S": "reywilliams"}, "repo-env": {"S": "my-repo#*"}}'
 ```
+
+8. **Watch your requested runs get approved ✅**
+
+![approved workflow run](images/approved_run.png)
