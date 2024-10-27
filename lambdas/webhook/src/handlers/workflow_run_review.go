@@ -24,6 +24,9 @@ var (
 	logInstance *zap.SugaredLogger
 	tableName   string
 	Current     WorkflowRun
+
+	ghClient       *github.Client
+	dynamodbClient *dynamodb.Client
 )
 
 const (
@@ -47,6 +50,15 @@ func init() {
 
 func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.WorkflowRunEvent) error {
 	funcLogger := logInstance.With()
+
+	// if not mocking, set up clients. when mocking clients will be stubbed clients
+	if !mocking {
+		clientSetupErr := setupClients(ctx)
+		if clientSetupErr != nil {
+			funcLogger.Errorln("error while setting up clients")
+			return clientSetupErr
+		}
+	}
 
 	_, subSegment := xray.BeginSubsegment(ctx, "HandleWorkflowRunEvent")
 	if subSegment != nil {
@@ -139,13 +151,7 @@ func requesterHasPermission(ctx context.Context, environment string) (*bool, err
 		defer subSegment.Close(nil)
 	}
 
-	dynamodbClient, err := db.GetDynamoClient(ctx)
-	if err != nil {
-		funcLogger.Errorln("error observed while trying to get dynamodb client", zap.Error(err))
-		return nil, err
-	}
-
-	hasAccess, err := checkRequesterAccess(ctx, dynamodbClient, strings.ToLower(Current.requester), strings.ToLower(Current.repository), strings.ToLower(environment))
+	hasAccess, err := checkRequesterAccess(ctx, strings.ToLower(Current.requester), strings.ToLower(Current.repository), strings.ToLower(environment))
 	if err != nil {
 		funcLogger.Errorln("error observed while checking request access", zap.Error(err))
 		return nil, err
@@ -163,7 +169,7 @@ Env access -> requester has access to an env across all repos (<repo>#<env> -> *
 Org access -> requester has access to an org, so all repos and all environments (<repo>#<env> -> *#*)
 *
 */
-func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requester string, repository string, environment string) (*bool, error) {
+func checkRequesterAccess(ctx context.Context, requester string, repository string, environment string) (*bool, error) {
 	funcLogger := logInstance.With()
 
 	_, subSegment := xray.BeginSubsegment(ctx, "checkRequesterAccess")
@@ -189,7 +195,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{repository, environment}, "#")},
 			},
 		}
-		requesterHasExactAccess, err := checkAccessByInput(ctx, exactAccessInput, client)
+		requesterHasExactAccess, err := checkAccessByInput(ctx, exactAccessInput)
 		if err != nil {
 			errChan <- err
 			funcLogger.Errorln("error observed while trying to check if requester has exact access", zap.Error(err))
@@ -213,7 +219,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{repository, "*"}, "#")},
 			},
 		}
-		requesterHasRepoAccess, err := checkAccessByInput(ctx, repoAccessInput, client)
+		requesterHasRepoAccess, err := checkAccessByInput(ctx, repoAccessInput)
 		if err != nil {
 			errChan <- err
 			funcLogger.Errorln("error observed while trying to check if requester has repo level access", zap.Error(err))
@@ -236,7 +242,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{"*", "*"}, "#")},
 			},
 		}
-		requesterHasOrgAccess, err := checkAccessByInput(ctx, orgAccessInput, client)
+		requesterHasOrgAccess, err := checkAccessByInput(ctx, orgAccessInput)
 		if err != nil {
 			errChan <- err
 			funcLogger.Errorln("error observed while trying to check if requester has org access", zap.Error(err))
@@ -259,7 +265,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 				"repo-env": &types.AttributeValueMemberS{Value: strings.Join([]string{"*", environment}, "#")},
 			},
 		}
-		requesterHasRepoAccess, err := checkAccessByInput(ctx, repoAccessInput, client)
+		requesterHasRepoAccess, err := checkAccessByInput(ctx, repoAccessInput)
 		if err != nil {
 			errChan <- err
 			funcLogger.Errorln("error observed while trying to check if requester has environment level access", zap.Error(err))
@@ -305,7 +311,7 @@ func checkRequesterAccess(ctx context.Context, client *dynamodb.Client, requeste
 	return &requesterAccess, nil
 }
 
-func checkAccessByInput(ctx context.Context, input *dynamodb.GetItemInput, client *dynamodb.Client) (*bool, error) {
+func checkAccessByInput(ctx context.Context, input *dynamodb.GetItemInput) (*bool, error) {
 	funcLogger := logInstance.With()
 
 	_, subSegment := xray.BeginSubsegment(ctx, "checkAccessByInput")
@@ -315,7 +321,7 @@ func checkAccessByInput(ctx context.Context, input *dynamodb.GetItemInput, clien
 		defer subSegment.Close(nil)
 	}
 
-	result, err := client.GetItem(ctx, input)
+	result, err := dynamodbClient.GetItem(ctx, input)
 	if err != nil {
 		errMsg := "error observed while trying to get dynamodb item"
 		funcLogger.Errorln(errMsg, zap.Error(err), zap.Any("input", *input))
@@ -350,12 +356,6 @@ func approvePendingDeployment(ctx context.Context, pendingDeployment *github.Pen
 	}
 
 	funcLogger = funcLogger.With(zap.Int64("envID", envID))
-
-	ghClient, err := gh.GetGitHubClient(ctx)
-	if err != nil {
-		funcLogger.Errorln("error while getting github client to approve pending deployments", zap.Error(err))
-		return err
-	}
 
 	req := github.PendingDeploymentsRequest{EnvironmentIDs: []int64{envID}, State: "approved", Comment: "Approved via Go GitHub Webhook Lambda! 🚀"}
 
@@ -405,12 +405,6 @@ func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) 
 
 	funcLogger = funcLogger.With(zap.String("owner", Current.owner), zap.Int64("runID", Current.ID))
 
-	ghClient, err := gh.GetGitHubClient(ctx)
-	if err != nil {
-		funcLogger.Errorln("error while github client to fetch pending deployments", zap.Error(err))
-		return nil, err
-	}
-
 	maxRetries := 3
 	retryDelay := 1
 
@@ -433,4 +427,40 @@ func getPendingDeployments(ctx context.Context, event *github.WorkflowRunEvent) 
 	}
 
 	return nil, fmt.Errorf("no pending deployments found after %d retries", maxRetries)
+}
+
+func setupClients(ctx context.Context) error {
+	ghClientErr := setGhClient(ctx)
+	if ghClientErr != nil {
+		return ghClientErr
+	}
+
+	dbClientErr := setDbClient(ctx)
+	if dbClientErr != nil {
+		return dbClientErr
+	}
+
+	return nil
+}
+
+func setGhClient(ctx context.Context) error {
+	client, err := gh.GetGitHubClient(ctx)
+	if err != nil {
+		logInstance.Errorln("error while getting github client to handle workflow run review", zap.Error(err))
+		return err
+	}
+
+	ghClient = client
+	return nil
+}
+
+func setDbClient(ctx context.Context) error {
+	client, err := db.GetDynamoClient(ctx)
+	if err != nil {
+		logInstance.Errorln("error observed while trying to get dynamodb client", zap.Error(err))
+		return err
+	}
+
+	dynamodbClient = client
+	return nil
 }
