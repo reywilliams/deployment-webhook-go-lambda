@@ -45,32 +45,6 @@ func init() {
 	Current = WorkflowRun{}
 }
 
-func RequesterHasPermission(ctx context.Context, environment string) (*bool, error) {
-	funcLogger := logInstance.With(zap.String("environment", environment))
-	funcLogger.Infoln("checking if requester has permission")
-
-	_, subSegment := xray.BeginSubsegment(ctx, "RequesterHasPermission")
-	if subSegment != nil {
-		traceID := subSegment.TraceID
-		funcLogger = logInstance.With(zap.String("traceID", traceID))
-		defer subSegment.Close(nil)
-	}
-
-	dynamodbClient, err := db.GetDynamoClient(ctx)
-	if err != nil {
-		funcLogger.Errorln("error observed while trying to get dynamodb client", zap.Error(err))
-		return nil, err
-	}
-
-	hasAccess, err := checkRequesterAccess(ctx, dynamodbClient, strings.ToLower(Current.requester), strings.ToLower(Current.repository), strings.ToLower(environment))
-	if err != nil {
-		funcLogger.Errorln("error observed while checking request access", zap.Error(err))
-		return nil, err
-	}
-
-	return hasAccess, nil
-}
-
 func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.WorkflowRunEvent) error {
 	funcLogger := logInstance.With()
 
@@ -132,7 +106,7 @@ func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.Wor
 		}
 
 		// check if requestor (sender) has permission for repo/env
-		requesterHasPerm, err := RequesterHasPermission(ctx, environment)
+		requesterHasPerm, err := requesterHasPermission(ctx, environment)
 		if err != nil {
 			funcLogger.Errorln("error observed while checking if requester has permission", zap.Error(err))
 			return err
@@ -152,6 +126,32 @@ func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.Wor
 
 	// no error yielded, return nil
 	return nil
+}
+
+func requesterHasPermission(ctx context.Context, environment string) (*bool, error) {
+	funcLogger := logInstance.With(zap.String("environment", environment))
+	funcLogger.Infoln("checking if requester has permission")
+
+	_, subSegment := xray.BeginSubsegment(ctx, "RequesterHasPermission")
+	if subSegment != nil {
+		traceID := subSegment.TraceID
+		funcLogger = logInstance.With(zap.String("traceID", traceID))
+		defer subSegment.Close(nil)
+	}
+
+	dynamodbClient, err := db.GetDynamoClient(ctx)
+	if err != nil {
+		funcLogger.Errorln("error observed while trying to get dynamodb client", zap.Error(err))
+		return nil, err
+	}
+
+	hasAccess, err := checkRequesterAccess(ctx, dynamodbClient, strings.ToLower(Current.requester), strings.ToLower(Current.repository), strings.ToLower(environment))
+	if err != nil {
+		funcLogger.Errorln("error observed while checking request access", zap.Error(err))
+		return nil, err
+	}
+
+	return hasAccess, nil
 }
 
 /*
