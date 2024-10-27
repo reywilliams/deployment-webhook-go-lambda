@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-    <img src="images/diagram.svg" alt="Diagram" width="250"/>
+    <img src="images/diagram.png" alt="Diagram" width="800"/>
 </p>
 
 ## Description
