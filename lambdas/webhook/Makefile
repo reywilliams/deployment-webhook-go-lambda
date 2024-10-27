@@ -32,16 +32,13 @@ docker-run: docker-build
 	-e environment=dev \
 	$(LAMBDA_DOCKER_IMAGE) ./bootstrap
 
-docker-build-xray:
-	docker build -t $(XRAY_DOCKER_IMAGE) -f Dockerfile.xray .
+docker-logs:
+	docker logs -f $$(docker ps -q --filter ancestor=$(LAMBDA_DOCKER_IMAGE))
 
-docker-logs-lambda:
-	docker logs $$(docker ps -q --filter ancestor=$(LAMBDA_DOCKER_IMAGE))
-
-docker-kill-lambda:
+docker-kill:
 	docker kill $$(docker ps -q --filter ancestor=$(LAMBDA_DOCKER_IMAGE))
 
 docker-test:
 	curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d @$(CONFIG_DIR)/api_gw_sample_payload.json
 
-.PHONY: build test docker-build docker-run docker-kill docker-test docker-logs-lambda
+.PHONY: build test docker-build docker-run docker-kill docker-test docker-logs
