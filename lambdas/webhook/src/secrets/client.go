@@ -27,7 +27,7 @@ func init() {
 	logInstance = logger.GetLogger().Sugar()
 }
 
-func GetSecretCache(ctx context.Context) (*secretcache.Cache, error) {
+func getSecretCache(ctx context.Context) (*secretcache.Cache, error) {
 	if err := configureSecretCache(ctx); err != nil {
 		logInstance.Errorln("error observed while trying to get secretsmanager client", zap.Error(err))
 		return nil, err
@@ -82,7 +82,7 @@ func GetSecretValue(ctx context.Context, secretName string) (*string, error) {
 		defer subSegment.Close(nil)
 	}
 
-	cache, err := GetSecretCache(ctx)
+	cache, err := getSecretCache(ctx)
 	if err != nil {
 		funcLogger.Errorln("error while string to get secret client", zap.Error(err))
 		return nil, err
