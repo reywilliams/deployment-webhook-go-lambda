@@ -4,7 +4,7 @@ resource "aws_api_gateway_method" "post_webhook" {
   api_key_required = var.use_api_key
 
   http_method   = local.POST_METHOD
-  authorization = "NONE" # TODO: look into changing this to CUSTOM/use Oauth
+  authorization = "NONE" 
 }
 
 

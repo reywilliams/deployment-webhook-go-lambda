@@ -45,8 +45,6 @@ variable "github_webhook_secret_string" {
   sensitive   = true
 }
 
-# TODO: try looking into github app and using
-# https://github.com/jferrl/go-githubauth
 variable "github_PAT_secret_name" {
   type        = string
   description = "Secret name (or ARN) for GitHub Personal Access Token (PAT)"

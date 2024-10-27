@@ -21,7 +21,7 @@ resource "aws_dynamodb_table" "table" {
 
   attribute {
     name = var.hash_key
-    type = "S" # assumption, TODO: challenge if needed
+    type = "S"
   }
 
   # only create attribute block for range_key if
@@ -30,7 +30,7 @@ resource "aws_dynamodb_table" "table" {
     for_each = var.range_key != null ? [var.range_key] : []
     content {
       name = var.range_key
-      type = "S" # assumption, TODO: challenge if needed
+      type = "S"
     }
   }
 
