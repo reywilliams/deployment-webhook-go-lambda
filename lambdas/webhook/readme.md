@@ -56,6 +56,12 @@ Follow & view the logs for your container and verify the behavior
 make docker-logs
 ```
 
+or
+
+```shell
+make docker-logs-f
+```
+
 ### Test The Running Image
 
 Test the lambda using cURL and a sample payload (I have made the sample payload file [lambda_sample_payload.json](config/lambda_sample_payload.json)) that is used to build a valid API Gateway Proxy Request in [api_gw_sample_payload.json](config/api_gw_sample_payload.json)
