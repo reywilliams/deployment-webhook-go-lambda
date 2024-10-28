@@ -92,12 +92,6 @@ func HandleWorkflowRunEvent(ctx context.Context, mocking bool, event *github.Wor
 	logInstance = logInstance.With(zap.String("requester", Current.requester), zap.String("repository", Current.repository))
 	funcLogger = logInstance.With()
 
-	if mocking {
-		message := fmt.Sprintf("requester %s has needs a review in %s repo!", Current.requester, Current.repository)
-		funcLogger.Infof("constructed message: %s", message)
-		return nil
-	}
-
 	pendingDeployments, err := getPendingDeployments(ctx, event)
 	if err != nil {
 		funcLogger.Errorln("error while fetching pending deployments to handle workflow run event")
