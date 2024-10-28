@@ -1,12 +1,18 @@
-
+# go binary
 BINARY_NAME=bootstrap
+
+# docker image
+LAMBDA_DOCKER_IMAGE=webhook-lambda
+
+# dir names
 BUILD_DIR=build
 SRC_DIR=src
 CONFIG_DIR=config
 SCRIPTS_DIR=scripts
+
+# go and test files
 GOFILES=$(shell find $(SRC_DIR) -name '*.go')
 TESTFILES=$(shell find $(SRC_DIR) -name '*_test.go')
-LAMBDA_DOCKER_IMAGE=webhook-lambda
 
 all: build
 
@@ -33,6 +39,9 @@ docker-run: docker-build
 	$(LAMBDA_DOCKER_IMAGE) ./bootstrap
 
 docker-logs:
+	docker logs $$(docker ps -q --filter ancestor=$(LAMBDA_DOCKER_IMAGE))
+
+docker-logs-f:
 	docker logs -f $$(docker ps -q --filter ancestor=$(LAMBDA_DOCKER_IMAGE))
 
 docker-kill:
@@ -41,4 +50,4 @@ docker-kill:
 docker-test:
 	curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d @$(CONFIG_DIR)/api_gw_sample_payload.json
 
-.PHONY: build test docker-build docker-run docker-kill docker-test docker-logs
+.PHONY: build test docker-build docker-run docker-kill docker-test docker-logs docker-logs-f
