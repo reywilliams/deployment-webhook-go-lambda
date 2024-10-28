@@ -21,8 +21,7 @@ import (
 
 var (
 	logInstance *zap.SugaredLogger
-
-	Mocking bool
+	mocking     bool
 )
 
 const (
@@ -36,7 +35,6 @@ const (
 
 func init() {
 	logInstance = logger.GetLogger().Sugar()
-	logger.InitializeXRay()
 }
 
 type GitHubEventMonitor struct {
@@ -45,6 +43,8 @@ type GitHubEventMonitor struct {
 
 func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	funcLogger := logInstance.With()
+	mocking = ShouldUseMock(&request.Headers, funcLogger)
+	logger.InitializeXRay(mocking)
 
 	_, subSegment := xray.BeginSubsegment(ctx, "HandleRequest")
 	if subSegment != nil {
@@ -53,7 +53,6 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 		defer subSegment.Close(nil)
 	}
 
-	Mocking = ShouldUseMock(&request.Headers, funcLogger)
 	webhookSecretErr := s.sourceSecret(ctx)
 	if webhookSecretErr != nil {
 		errMsg := "a webhook secret has not been configured"
@@ -85,7 +84,11 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 
 	switch event := event.(type) {
 	case *github.WorkflowRunEvent:
-		err := handlers.HandleWorkflowRunEvent(ctx, Mocking, event)
+		if mocking {
+			return eventProcessedResp(), nil
+		}
+
+		err := handlers.HandleWorkflowRunEvent(ctx, mocking, event)
 		if err != nil {
 			errMsg := fmt.Sprintf("error while handling event type %T", event)
 			funcLogger.Errorln(errMsg, zap.Error(err))
@@ -97,7 +100,7 @@ func (s *GitHubEventMonitor) HandleRequest(ctx context.Context, request events.A
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: buildResponseBody(errMsg, http.StatusBadRequest)}, nil
 	}
 
-	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: buildResponseBody("event processed", http.StatusOK)}, nil
+	return eventProcessedResp(), nil
 }
 
 func main() {
@@ -114,7 +117,7 @@ func logAPIGatewayRequest(req events.APIGatewayProxyRequest, funcLogger *zap.Sug
 			"Path":                  req.Path,
 			"Headers":               req.Headers,
 			"QueryStringParameters": req.QueryStringParameters,
-			"Body":                  req.Body[:100],
+			"Body":                  req.Body[:min(len(req.Body), 100)],
 			"IsBase64Encoded":       req.IsBase64Encoded,
 		}),
 	)
@@ -161,7 +164,7 @@ func getWebhookSecret(ctx context.Context) (*string, error) {
 
 	var secretDefault = string(GITHUB_WEBHOOK_SECRET_DEFAULT)
 
-	if Mocking {
+	if mocking {
 		return &secretDefault, nil
 	}
 
@@ -187,4 +190,11 @@ func (s *GitHubEventMonitor) sourceSecret(ctx context.Context) error {
 	}
 	s.webhookSecretKey = []byte(*secret)
 	return nil
+}
+
+/*
+returns APIGatewayProxyResponse with Status OK (200) and message of "event process"
+*/
+func eventProcessedResp() events.APIGatewayProxyResponse {
+	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: buildResponseBody("event processed", http.StatusOK)}
 }

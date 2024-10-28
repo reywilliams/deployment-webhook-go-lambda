@@ -44,11 +44,11 @@ func GetLogger() *zap.Logger {
 	return instance
 }
 
-func InitializeXRay() {
+func InitializeXRay(mocking bool) {
 
 	devEnv := os.Getenv("environment") == "dev"
 
-	if devEnv {
+	if devEnv || mocking {
 		os.Setenv("AWS_XRAY_SDK_DISABLED", "true")
 		return
 	}

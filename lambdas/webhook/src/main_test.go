@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 
@@ -31,54 +30,77 @@ var (
 )
 
 func init() {
-	initReqs()
-
-	os.Setenv("environment", "dev")
-}
-
-func initReqs() {
 	eventMonitor = &GitHubEventMonitor{
 		webhookSecretKey: []byte(GITHUB_WEBHOOK_SECRET_DEFAULT),
 	}
-
-	invalidPayloadReq = generateAPIGatewayProxyRequest(nil, nil, false)
-	parsedWebhookIncorrectBodyReq = generateAPIGatewayProxyRequest(nil, &[]string{"invalid body"}[0], true)
-	parsedWebhookIncorrectHeaderType = generateAPIGatewayProxyRequest(&[]string{"incorrect"}[0], nil, true)
-	unSupportedEventReq = generateAPIGatewayProxyRequest(&[]string{"sponsorship"}[0], nil, true)
-	supportedEventReq = generateAPIGatewayProxyRequest(nil, nil, true)
 }
 
 func TestInValidPayload(t *testing.T) {
 	t.Parallel()
+
+	// arrange
+	invalidPayloadReq = generateAPIGatewayProxyRequest(nil, nil, false)
+
+	// act
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), invalidPayloadReq)
+
+	// assert
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("invalid payload"))
 }
 
 func TestInvalidWebhookBody(t *testing.T) {
 	t.Parallel()
+
+	// arrange
+	parsedWebhookIncorrectBodyReq = generateAPIGatewayProxyRequest(nil, &[]string{"invalid body"}[0], true)
+
+	// act
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectBodyReq)
+
+	// assert
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("failed to parse webhook"))
 }
 
 func TestInvalidWebhookHeaderType(t *testing.T) {
 	t.Parallel()
+
+	// arrange
+	parsedWebhookIncorrectHeaderType = generateAPIGatewayProxyRequest(&[]string{"incorrect"}[0], nil, true)
+
+	// act
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), parsedWebhookIncorrectHeaderType)
+
+	// assert
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("failed to parse webhook"))
 }
 
 func TestUnsupportedEventType(t *testing.T) {
 	t.Parallel()
+
+	// arrange
+	unSupportedEventReq = generateAPIGatewayProxyRequest(&[]string{"sponsorship"}[0], nil, true)
+
+	// act
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), unSupportedEventReq)
+
+	// assert
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("unsupported event type"))
 }
 
 func TestSupportedEventType(t *testing.T) {
 	t.Parallel()
+
+	// arrange
+	supportedEventReq = generateAPIGatewayProxyRequest(nil, nil, true)
+
+	// act
 	resp, _ := eventMonitor.HandleRequest(context.TODO(), supportedEventReq)
+
+	// assert
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "incorrect status code")
 	assert.Contains(t, strings.ToLower(resp.Body), strings.ToLower("event processed"))
 }
