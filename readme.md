@@ -34,6 +34,9 @@ This project is a Go-based AWS Lambda function designed to handle GitHub `workfl
 - **Infrastructure as Code (IaC)**: Entire project is defined with Terraform and Terragrunt for consistent, reproducible deployments.
 - **API Gateway Security**: The Lambda is behind an API Gateway, restricted to only GitHub source IPs noted in the `api.github.com/meta` [endpoint](https://api.github.com/meta) in the `hooks` section.
 
+> [!NOTE]  
+> See the webhook [readme](./lambdas/webhook/readme.md) for more information.
+
 ## Prerequisites
 
 - [AWS Account](https://aws.amazon.com/free/) with permissions to provision resources for Lambda, DynamoDB, Secrets Manager, X-Ray, and IAM roles.
