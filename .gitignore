@@ -49,9 +49,6 @@ terraform.rc
 # Virtual Environments
 **/venv/**
 
-# Go Files
-go.sum
-
 # Ignore macOS .DS_Store files
 .DS_Store
 
