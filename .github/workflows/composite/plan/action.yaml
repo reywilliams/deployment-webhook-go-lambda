@@ -60,8 +60,7 @@ runs:
         terragrunt show -json plan.tfplan > tfplan.json
 
     - name: Plan Diff
-      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
       uses: reywilliams/tf-plan-diff@main
       with:
-        file_path: "tfplan.json"
+        file_path: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}/tfplan.json
         app_name: ${{ inputs.application }}
