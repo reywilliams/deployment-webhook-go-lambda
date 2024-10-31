@@ -56,4 +56,12 @@ runs:
         TF_VAR_github_PAT_secret_string: ${{ inputs.PAT_TOKEN }}
         TF_VAR_github_webhook_secret_string: ${{ inputs.WEBHOOK_SECRET }}
       run: |
-        terragrunt plan --input=false
+        terragrunt plan --input=false -out plan.tfplan
+        terragrunt show -json plan.tfplan > tfplan.json
+
+    - name: Plan Diff
+      working-directory: ./terraform/configuration/us-west-2/dev/applications/${{ inputs.application }}
+      uses: reywilliams/tf-plan-diff@main
+      with:
+        file_path: "tfplan.json"
+        app_name: ${{ inputs.application }}
