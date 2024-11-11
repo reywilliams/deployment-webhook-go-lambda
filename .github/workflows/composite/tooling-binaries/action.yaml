@@ -39,7 +39,7 @@ runs:
       if: steps.cache-tenv-restore.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -s -L -O "https://github.com/tofuutils/tenv/releases/latest/download/tenv_${{ inputs.tenv_version }}_amd64.deb"
+        curl -s -L -O "https://github.com/tofuutils/tenv/releases/download/${{ inputs.tenv_version }}/tenv_${{ inputs.tenv_version }}_amd64.deb
 
     - name: Install tenv
       shell: bash
